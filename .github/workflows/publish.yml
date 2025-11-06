@@ -1,3 +1,31 @@
+name: publish
+
+on:
+  push:
+    tags: [ 'v*.*.*' ]
+
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.1'
+      - name: Install deps (Bun)
+        run: bun install --no-progress
+      - name: Build (Bun)
+        run: bun run build
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 name: Publish Package
 
 on:

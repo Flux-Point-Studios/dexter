@@ -313,4 +313,33 @@ export class SaturnSwap extends BaseDex {
             },
         ];
     }
+
+    /**
+     * OPTIONAL: Build a simple order via Saturn REST API and return the first tx hex (if any).
+     */
+    public async createSimpleOrderHexViaApi(input: any): Promise<string | undefined> {
+        const payload = await (this.api as SaturnSwapApi).createOrderTransactionSimple(input);
+        return payload.successTransactions?.[0]?.hexTransaction ?? undefined;
+    }
+
+    /**
+     * OPTIONAL: Build via REST, import into wallet, sign and submit locally.
+     */
+    public async buildSignSubmitViaApi(input: any, wallet?: BaseWalletProvider): Promise<string> {
+        const wp = wallet;
+        if (!wp) {
+            throw new Error('Wallet provider is required for local signing.');
+        }
+
+        const hex = await this.createSimpleOrderHexViaApi(input);
+        if (!hex) {
+            throw new Error('REST API did not return a transaction hex.');
+        }
+
+        const tx = wp.newTransactionFromHex(hex);
+        await tx.sign();
+        await tx.submit();
+
+        return tx.hash;
+    }
 } 

@@ -66,4 +66,14 @@ export class MockWalletProvider extends BaseWalletProvider {
         // Mock implementation - no-op for testing
     }
 
+    public newTransactionFromHex(txCborHex: string): DexTransaction {
+        // Return a bare DexTransaction for testing
+        return new DexTransaction(this);
+    }
+
+    public importTransactionHex(transaction: DexTransaction, txCborHex: string): DexTransaction {
+        // No-op in mock; return the same transaction
+        return transaction;
+    }
+
 }

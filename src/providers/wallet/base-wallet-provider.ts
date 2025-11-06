@@ -27,4 +27,14 @@ export abstract class BaseWalletProvider {
 
     abstract overrideWalletUtxos(utxos: UTxO[]): void;
 
+    /**
+     * Create a new DexTransaction from a prebuilt transaction CBOR hex string.
+     */
+    abstract newTransactionFromHex(txCborHex: string): DexTransaction;
+
+    /**
+     * Import a prebuilt transaction CBOR hex string into an existing DexTransaction.
+     */
+    abstract importTransactionHex(transaction: DexTransaction, txCborHex: string): DexTransaction;
+
 }

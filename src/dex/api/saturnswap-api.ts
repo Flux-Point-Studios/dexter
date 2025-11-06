@@ -7,11 +7,11 @@ import { RequestConfig } from '@app/types';
 import { appendSlash } from '@app/utils';
 
 /**
- * SaturnSwap API implementation
- * Provides methods to fetch liquidity pools and other data from SaturnSwap's GraphQL API
- * 
- * Note: SaturnSwap is a limit-order DEX, so "pools" here represent order book
- * liquidity and trading pairs, not traditional AMM pools with x*y=k curves.
+ * SaturnSwap API implementation (REST)
+ *
+ * Note: SaturnSwap is a limit-order/aggregator style DEX. We expose orderbook and
+ * transaction helpers; the liquidityPools method fabricates a minimal pool-like
+ * object for Dexter's common interfaces when both tokens are provided.
  */
 export class SaturnSwapApi extends BaseApi {
 
@@ -23,155 +23,82 @@ export class SaturnSwapApi extends BaseApi {
 
         this.dex = dex;
 
+        const baseEnv = (typeof process !== 'undefined' && (process as any).env)
+            ? ((process as any).env.SATURN_API_BASE_URL as string | undefined)
+            : undefined;
+
+        const baseUrl = baseEnv && baseEnv.length > 0
+            ? baseEnv
+            : 'https://api.saturnswap.xyz';
+
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+
+        const key = (typeof process !== 'undefined' && (process as any).env)
+            ? ((((process as any).env.SATURN_API_KEY || (process as any).env.SATURN_API_TOKEN) as string | undefined))
+            : undefined;
+
+        if (key && key.length > 0) {
+            headers['Authorization'] = key.startsWith('Bearer ') ? key : `Bearer ${key}`;
+        }
+
         this.api = axios.create({
             timeout: requestConfig.timeout,
-            // SaturnSwap GraphQL API endpoint
-            baseURL: `${appendSlash(requestConfig.proxyUrl)}https://api.saturnswap.com/graphql`,
+            baseURL: `${appendSlash(requestConfig.proxyUrl)}${baseUrl}`,
+            headers,
             withCredentials: false,
         });
     }
 
-    /**
-     * Fetch liquidity pools from SaturnSwap API
-     * @param assetA The first asset to filter by
-     * @param assetB Optional second asset to filter by
-     */
-    liquidityPools(assetA?: Token, assetB?: Token): Promise<LiquidityPool[]> {
-        // If both tokens provided, fetch specific pair
-        if (assetA && assetB) {
-            return this.poolByPair(assetA, assetB)
-                .then((pool: LiquidityPool | null) => pool ? [pool] : []);
+    // ===== Public REST methods =====
+
+    async assets(): Promise<AggregatorAssetDTO[]> {
+        const { data } = await this.api.get<AggregatorAssetsResponseDTO>('/v1/aggregator/assets');
+        return data.assets ?? [];
+    }
+
+    async orderbook(assetA: Token, assetB: Token): Promise<AggregatorOrderbookResponseDTO> {
+        const params: Record<string, string> = {};
+        if (assetA !== 'lovelace') {
+            const a = assetA as Asset;
+            params.asset = `${a.policyId}.${a.assetName}`;
+        } else {
+            params.asset = '';
         }
-
-        // Based on SaturnSwap API documentation, use getPools query
-        return this.api.post('', {
-            query: `
-                query GetPools($first: Int, $where: PoolFilterInput) {
-                    getPools(first: $first, where: $where) {
-                        nodes {
-                            id
-                            name
-                            ticker
-                            lp_fee_percent
-                            token_project_one {
-                                ticker
-                                policy_id
-                                asset_name
-                                decimals
-                            }
-                            token_project_two {
-                                ticker
-                                policy_id
-                                asset_name
-                                decimals
-                            }
-                            pool_stats {
-                                liquidity_ada
-                                volume_24h_ada
-                                price_one
-                                price_two
-                            }
-                        }
-                    }
-                }
-            `,
-            variables: {
-                first: 100,
-                where: assetA ? {
-                    or: [
-                        { token_project_one: { policy_id: { eq: assetA === 'lovelace' ? '' : (assetA as Asset).policyId } } },
-                        { token_project_two: { policy_id: { eq: assetA === 'lovelace' ? '' : (assetA as Asset).policyId } } }
-                    ]
-                } : undefined,
-            },
-        }).then((response: any) => {
-            const pools = response.data?.data?.getPools?.nodes || [];
-            return pools.map((pool: any) => this.liquidityPoolFromResponse(pool));
-        }).catch((error: any) => {
-            console.error('Error fetching SaturnSwap pools:', error);
-            return [];
-        });
+        params.address = this.dex.orderAddress;
+        const { data } = await this.api.get<AggregatorOrderbookResponseDTO>('/v1/aggregator/orderbook', { params });
+        return data;
     }
 
-    /**
-     * Fetch a specific pool by asset pair
-     */
-    private poolByPair(assetA: Token, assetB: Token): Promise<LiquidityPool | null> {
-        // Use getPoolByTokens as shown in API docs
-        return this.api.post('', {
-            query: `
-                query GetPoolByTokens($policyIdOne: String, $assetNameOne: String, $policyIdTwo: String, $assetNameTwo: String) {
-                    getPoolByTokens(
-                        policyIdOne: $policyIdOne,
-                        assetNameOne: $assetNameOne,
-                        policyIdTwo: $policyIdTwo,
-                        assetNameTwo: $assetNameTwo
-                    ) {
-                        id
-                        name
-                        ticker
-                        lp_fee_percent
-                        token_project_one {
-                            ticker
-                            policy_id
-                            asset_name
-                            decimals
-                        }
-                        token_project_two {
-                            ticker
-                            policy_id
-                            asset_name
-                            decimals
-                        }
-                        pool_stats {
-                            liquidity_ada
-                            volume_24h_ada
-                            price_one
-                            price_two
-                        }
-                    }
-                }
-            `,
-            variables: {
-                policyIdOne: assetA === 'lovelace' ? '' : (assetA as Asset).policyId,
-                assetNameOne: assetA === 'lovelace' ? '' : (assetA as Asset).assetName,
-                policyIdTwo: assetB === 'lovelace' ? '' : (assetB as Asset).policyId,
-                assetNameTwo: assetB === 'lovelace' ? '' : (assetB as Asset).assetName,
-            },
-        }).then((response: any) => {
-            const pool = response.data?.data?.getPoolByTokens;
-            return pool ? this.liquidityPoolFromResponse(pool) : null;
-        }).catch((error: any) => {
-            console.error('Error fetching SaturnSwap pool by pair:', error);
-            return null;
-        });
+    async createOrderTransactionSimple(input: SimpleCreateInputDTO): Promise<SimpleCreatePayloadDTO> {
+        const { data } = await this.api.post<SimpleCreatePayloadDTO>('/v1/aggregator/simple/create-order-transaction', input);
+        return data;
     }
 
-    /**
-     * Convert API response to LiquidityPool model
-     */
-    private liquidityPoolFromResponse(poolData: any): LiquidityPool {
-        // Extract token information
-        const tokenA = poolData.token_project_one.policy_id !== ''
-            ? new Asset(poolData.token_project_one.policy_id, poolData.token_project_one.asset_name, poolData.token_project_one.decimals ?? 0)
-            : 'lovelace';
-        const tokenB = poolData.token_project_two.policy_id !== ''
-            ? new Asset(poolData.token_project_two.policy_id, poolData.token_project_two.asset_name, poolData.token_project_two.decimals ?? 0)
-            : 'lovelace';
+    async submitOrderTransactionSimple(input: SimpleSubmitInputDTO): Promise<SimpleSubmitPayloadDTO> {
+        const { data } = await this.api.post<SimpleSubmitPayloadDTO>('/v1/aggregator/simple/submit-order-transaction', input);
+        return data;
+    }
 
-        // Calculate reserves based on liquidity and prices
-        // This is a simplified calculation - actual implementation may need refinement
-        const liquidityAda = BigInt(poolData.pool_stats?.liquidity_ada || 0);
-        const priceOne = poolData.pool_stats?.price_one || 1;
-        const priceTwo = poolData.pool_stats?.price_two || 1;
-        
-        const reserveA = tokenA === 'lovelace' ? liquidityAda / 2n : BigInt(Math.floor(Number(liquidityAda) / 2 / priceOne));
-        const reserveB = tokenB === 'lovelace' ? liquidityAda / 2n : BigInt(Math.floor(Number(liquidityAda) / 2 / priceTwo));
+    async signOrderTransactionAdvanced(input: AdvancedSignInputDTO): Promise<AdvancedSignPayloadDTO> {
+        const { data } = await this.api.post<AdvancedSignPayloadDTO>('/v1/aggregator/advanced/sign-order-transaction', input);
+        return data;
+    }
 
-        const liquidityPool: LiquidityPool = new LiquidityPool(
+    // ===== Dexter compatibility: fabricate a minimal pool from orderbook =====
+    async liquidityPools(assetA?: Token, assetB?: Token): Promise<LiquidityPool[]> {
+        if (!assetA || !assetB) return [];
+
+        const ob = await this.orderbook(assetA, assetB);
+
+        const reserveA = this.approximateReserveFor(assetA, ob.asks, ob.bids);
+        const reserveB = this.approximateReserveFor(assetB, ob.asks, ob.bids);
+
+        const pool = new LiquidityPool(
             SaturnSwap.identifier,
-            tokenA,
-            tokenB,
+            assetA,
+            assetB,
             reserveA,
             reserveB,
             this.dex.poolAddress,
@@ -179,13 +106,144 @@ export class SaturnSwapApi extends BaseApi {
             this.dex.orderAddress,
         );
 
-        // Set additional properties
-        liquidityPool.poolFeePercent = poolData.lp_fee_percent || 0.3;
-        liquidityPool.identifier = poolData.id;
-        
-        // SaturnSwap uses dynamic LP token policies, so we can't set a generic lpToken here
-        // Each liquidity provider has their own policy
+        pool.poolFeePercent = 0.3;
+        pool.identifier = `${this.dex.orderAddress}:${this.assetKey(assetA)}-${this.assetKey(assetB)}`;
+        pool.extra = { orderbook: { asks: ob.asks ?? [], bids: ob.bids ?? [] } };
 
-        return liquidityPool;
+        return [pool];
     }
+
+    // ===== Internals =====
+
+    private static readonly DEFAULT_UNIT_MULTIPLIER: bigint = 1_000_000n;
+
+    private assetKey(token: Token): string {
+        return token === 'lovelace'
+            ? 'lovelace'
+            : `${(token as Asset).policyId}.${(token as Asset).assetName}`;
+    }
+
+    private approximateReserveFor(target: Token, asks?: AggregatorOrderDTO[], bids?: AggregatorOrderDTO[]): bigint {
+        const isAda = target === 'lovelace';
+        const policyId = isAda ? '' : (target as Asset).policyId;
+        const assetName = isAda ? '' : (target as Asset).assetName;
+
+        const orders = [...(asks ?? []), ...(bids ?? [])];
+        let total = 0;
+
+        for (const o of orders) {
+            const matchA = (o.assetA.policyId ?? '') === policyId && (o.assetA.assetName ?? '') === assetName;
+            const matchB = (o.assetB.policyId ?? '') === policyId && (o.assetB.assetName ?? '') === assetName;
+
+            if (matchA) total += o.sell_amount;
+            if (matchB) total += o.buy_amount;
+        }
+
+        return BigInt(Math.floor(total)) * SaturnSwapApi.DEFAULT_UNIT_MULTIPLIER;
+    }
+}
+
+// ===== Types =====
+
+interface AggregatorOrderbookAssetDTO {
+    policyId?: string | null;
+    assetName?: string | null;
+}
+
+interface AggregatorOrderDTO {
+    assetA: AggregatorOrderbookAssetDTO;
+    assetB: AggregatorOrderbookAssetDTO;
+    price: number;
+    sell_amount: number;
+    buy_amount: number;
+    type?: string | null;
+}
+
+interface AggregatorOrderbookResponseDTO {
+    asks?: AggregatorOrderDTO[];
+    bids?: AggregatorOrderDTO[];
+}
+
+interface AggregatorAssetDTO {
+    poolId?: string | null;
+    policyId?: string | null;
+    assetName?: string | null;
+    lpFeePercent: number;
+    assetRoyalty?: {
+        tokenProjectAddress?: string | null;
+        royaltyPercent: number;
+    } | null;
+}
+
+interface AggregatorAssetsResponseDTO {
+    assets?: AggregatorAssetDTO[];
+}
+
+interface SimpleCreateInputDTO {
+    paymentAddress?: string | null;
+    limitOrderComponents?: Array<{
+        poolId?: string | null;
+        tokenAmountSell: number;
+        tokenAmountBuy: number;
+        limitOrderType: number;
+        version: number;
+    }> | null;
+    marketOrderComponents?: Array<{
+        poolId?: string | null;
+        tokenAmountSell: number;
+        tokenAmountBuy: number;
+        marketOrderType: number;
+        slippage?: number | null;
+        version: number;
+    }> | null;
+    cancelComponents?: Array<{
+        poolUtxoId?: string | null;
+        version: number;
+    }> | null;
+}
+
+interface SuccessTransaction {
+    transactionId?: string | null;
+    hexTransaction?: string | null;
+}
+
+interface FailTransaction {
+    error?: { message?: string | null; code?: string | null; link?: string | null } | null;
+}
+
+interface SimpleCreatePayloadDTO {
+    successTransactions?: SuccessTransaction[] | null;
+    failTransactions?: FailTransaction[] | null;
+    error?: { message?: string | null; code?: string | null; link?: string | null } | null;
+}
+
+interface SimpleSubmitInputDTO {
+    paymentAddress?: string | null;
+    successTransactions?: SuccessTransaction[] | null;
+}
+
+interface SimpleSubmitPayloadDTO {
+    transactionIds?: string[] | null;
+    error?: { message?: string | null; code?: string | null; link?: string | null } | null;
+}
+
+interface AdvancedSignInputDTO {
+    paymentAddress?: string | null;
+    transactionIds?: string[] | null;
+    hexTransactions?: string[] | null;
+    submit: boolean;
+    returnSignedHex: boolean;
+}
+
+interface SignatureTransaction {
+    publicKey?: string | null;
+    signature?: string | null;
+    cbor?: string | null;
+    witnessCbor?: string | null;
+}
+
+interface AdvancedSignPayloadDTO {
+    successTransactions?: SuccessTransaction[] | null;
+    signatures?: SignatureTransaction[] | null;
+    error?: { message?: string | null; code?: string | null; link?: string | null } | null;
 } 

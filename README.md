@@ -27,12 +27,12 @@
 
 ##### NPM
 ```
-npm i @saibdev/dexter
+npm i @fluxpoint/dexter
 ```
 
 ##### Yarn
 ```
-yarn add @saibdev/dexter
+yarn add @fluxpoint/dexter
 ```
 
 ### Quick Start
@@ -74,6 +74,39 @@ lucidProvider
             ...
     });
 ```
+
+### SaturnSwap (REST) Flow
+
+```js
+// Configure env (example). You can also set process.env at runtime.
+// SATURN_API_BASE_URL=https://api.saturnswap.xyz
+// SATURN_API_KEY=your-api-key-or-bearer-token
+
+const dexter = new Dexter();
+const wallet = new LucidProvider();
+await wallet.loadWallet(cip30Interface, {
+    url: 'https://cardano-mainnet.blockfrost.io/api/v0',
+    projectId: '<blockfrost-project-id>'
+});
+
+dexter.withWalletProvider(wallet);
+
+// Example: build via Saturn REST, then import hex → sign → submit locally
+const saturn = dexter.dexByName('SaturnSwap');
+const input = {
+  paymentAddress: wallet.address(),
+  limitOrderComponents: [
+    { poolId: '...', tokenAmountSell: 1000000, tokenAmountBuy: 500000, limitOrderType: 0, version: 1 }
+  ]
+};
+
+const txHash = await (saturn as any).buildSignSubmitViaApi(input, wallet);
+console.log('Submitted:', txHash);
+```
+
+Environment variables:
+- `SATURN_API_BASE_URL` (e.g., `https://api.saturnswap.xyz`)
+- `SATURN_API_KEY` or `SATURN_API_TOKEN` (will be sent as `Authorization: Bearer <value>`)
 
 ### Dexter API
 All providers outlined below are modular, so you can extend the 'base' of the specific provider you want to supply, and provide it

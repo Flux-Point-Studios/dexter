@@ -203,6 +203,18 @@ export class LucidProvider extends BaseWalletProvider {
         this._api.overrideUTxOs(lucidUtxos);
     }
 
+    public newTransactionFromHex(txCborHex: string): DexTransaction {
+        const transaction: DexTransaction = new DexTransaction(this);
+        // fromTx returns a signable builder compatible with our flow
+        (transaction as any).providerData.tx = (this._api as any).fromTx(txCborHex);
+        return transaction;
+    }
+
+    public importTransactionHex(transaction: DexTransaction, txCborHex: string): DexTransaction {
+        (transaction as any).providerData.tx = (this._api as any).fromTx(txCborHex);
+        return transaction;
+    }
+
     private paymentFromAssets(assetBalances: AssetBalance[]): Assets {
         return assetBalances
             .reduce((payment: Record<Unit | 'lovelace', bigint>, assetBalance: AssetBalance) => {
