@@ -27,12 +27,12 @@
 
 ##### NPM
 ```
-npm i @fluxpoint/dexter
+npm i @fluxpointstudios/dexter
 ```
 
 ##### Yarn
 ```
-yarn add @fluxpoint/dexter
+yarn add @fluxpointstudios/dexter
 ```
 
 ### Quick Start
