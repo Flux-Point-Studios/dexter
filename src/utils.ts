@@ -18,7 +18,7 @@ export function correspondingReserves(liquidityPool: LiquidityPool, token: Token
 
 export function appendSlash(value?: string) {
     if (! value) return '';
-    if (value.endsWith('/')) return;
+    if (value.endsWith('/')) return value;
 
     return `${value}/`;
 }
