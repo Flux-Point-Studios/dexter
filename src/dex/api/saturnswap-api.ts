@@ -260,7 +260,7 @@ interface AdvancedSignPayloadDTO {
 } 
 
 // Quote by asset request/response
-interface QuoteRequest {
+export interface QuoteRequest {
     asset: string;             // concatenated policyId + assetNameHex ('' for ADA)
     direction: number;         // 3 MarketBuy ADA->token, 4 MarketSell token->ADA
     tokenAmountSell: number;   // display units
@@ -268,7 +268,7 @@ interface QuoteRequest {
     slippage: number | null;   // percent (e.g., 0.5) or null
 }
 
-interface QuoteResponse {
+export interface QuoteResponse {
     buildable: boolean;
     reason?: string | null;
     expectedBuy?: number | null;
@@ -279,6 +279,6 @@ interface QuoteResponse {
 }
 
 // Create from asset input
-interface CreateFromAssetInput extends QuoteRequest {
+export interface CreateFromAssetInput extends QuoteRequest {
     paymentAddress: string;
 }

@@ -21,6 +21,7 @@ import order from '@dex/definitions/saturnswap/order';
 import pool from '@dex/definitions/saturnswap/pool';
 import { BaseApi } from '@dex/api/base-api';
 import { SaturnSwapApi } from './api/saturnswap-api';
+import type { QuoteResponse } from './api/saturnswap-api';
 import { BaseWalletProvider } from '@providers/wallet/base-wallet-provider';
 import { decodeControlDatum, decodeSwapDatum } from './definitions/saturnswap/decode';
 import { Script } from 'lucid-cardano';
@@ -353,7 +354,7 @@ export class SaturnSwap extends BaseDex {
         tokenAmountSell: number;
         tokenAmountBuy: number;
         slippage: number | null;
-    }) {
+    }): Promise<QuoteResponse> {
         return await (this.api as SaturnSwapApi).quoteByAsset(input as any);
     }
 
