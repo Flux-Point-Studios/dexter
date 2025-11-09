@@ -86,6 +86,17 @@ export class SaturnSwapApi extends BaseApi {
         return data;
     }
 
+    // ===== Additional high-level helpers (by asset) =====
+    async quoteByAsset(input: QuoteRequest): Promise<QuoteResponse> {
+        const { data } = await this.api.post<QuoteResponse>('/v1/aggregator/quote', input);
+        return data;
+    }
+
+    async createOrderTransactionFromAsset(input: CreateFromAssetInput): Promise<SimpleCreatePayloadDTO> {
+        const { data } = await this.api.post<SimpleCreatePayloadDTO>('/v1/aggregator/simple/create-from-asset', input);
+        return data;
+    }
+
     // ===== Dexter compatibility: fabricate a minimal pool from orderbook =====
     async liquidityPools(assetA?: Token, assetB?: Token): Promise<LiquidityPool[]> {
         if (!assetA || !assetB) return [];
@@ -247,3 +258,27 @@ interface AdvancedSignPayloadDTO {
     signatures?: SignatureTransaction[] | null;
     error?: { message?: string | null; code?: string | null; link?: string | null } | null;
 } 
+
+// Quote by asset request/response
+interface QuoteRequest {
+    asset: string;             // concatenated policyId + assetNameHex ('' for ADA)
+    direction: number;         // 3 MarketBuy ADA->token, 4 MarketSell token->ADA
+    tokenAmountSell: number;   // display units
+    tokenAmountBuy: number;    // display units, optional; use 0 when slippage=null
+    slippage: number | null;   // percent (e.g., 0.5) or null
+}
+
+interface QuoteResponse {
+    buildable: boolean;
+    reason?: string | null;
+    expectedBuy?: number | null;
+    minReceive?: number | null;
+    selectedPoolId?: string | null;
+    bestAsk?: number | null;
+    bestBid?: number | null;
+}
+
+// Create from asset input
+interface CreateFromAssetInput extends QuoteRequest {
+    paymentAddress: string;
+}

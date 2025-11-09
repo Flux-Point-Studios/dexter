@@ -342,4 +342,57 @@ export class SaturnSwap extends BaseDex {
 
         return tx.hash;
     }
+
+    /**
+     * Quote by asset using Saturn REST aggregator (no auth required).
+     * Body: { asset, direction, tokenAmountSell, tokenAmountBuy, slippage }
+     */
+    public async quoteByAsset(input: {
+        asset: string;
+        direction: number;
+        tokenAmountSell: number;
+        tokenAmountBuy: number;
+        slippage: number | null;
+    }) {
+        return await (this.api as SaturnSwapApi).quoteByAsset(input as any);
+    }
+
+    /**
+     * Create order from asset (aggregator picks pool). Returns first tx hex if present.
+     * Body: { asset, direction, tokenAmountSell, tokenAmountBuy, slippage, paymentAddress }
+     */
+    public async createFromAssetHex(input: {
+        asset: string;
+        direction: number;
+        tokenAmountSell: number;
+        tokenAmountBuy: number;
+        slippage: number | null;
+        paymentAddress: string;
+    }): Promise<string | undefined> {
+        const payload = await (this.api as SaturnSwapApi).createOrderTransactionFromAsset(input as any);
+        return payload.successTransactions?.[0]?.hexTransaction ?? undefined;
+    }
+
+    /**
+     * Build from asset, then sign+submit locally.
+     */
+    public async buildFromAssetSignSubmit(input: {
+        asset: string;
+        direction: number;
+        tokenAmountSell: number;
+        tokenAmountBuy: number;
+        slippage: number | null;
+        paymentAddress: string;
+    }, wallet?: BaseWalletProvider): Promise<string> {
+        const wp = wallet;
+        if (!wp) throw new Error('Wallet provider is required for local signing.');
+
+        const hex = await this.createFromAssetHex(input);
+        if (!hex) throw new Error('REST API did not return a transaction hex.');
+
+        const tx = wp.newTransactionFromHex(hex);
+        await tx.sign();
+        await tx.submit();
+        return tx.hash;
+    }
 } 
