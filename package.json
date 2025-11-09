@@ -1,6 +1,6 @@
 {
   "name": "@fluxpointstudios/dexter",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "license": "MIT",
   "author": {
     "name": "Clark Alesna",
@@ -20,9 +20,9 @@
     "DEX"
   ],
   "description": "Customizable Typescript SDK for interacting with Cardano DEXs (FluxPoint fork with SaturnSwap REST)",
-  "repository": "https://github.com/fluxpoint/dexter",
-  "homepage": "https://github.com/fluxpoint/dexter#readme",
-  "bugs": { "url": "https://github.com/fluxpoint/dexter/issues" },
+  "repository": "https://github.com/Flux-Point-Studios/dexter",
+  "homepage": "https://github.com/Flux-Point-Studios/dexter#readme",
+  "bugs": { "url": "https://github.com/Flux-Point-Studios/dexter/issues" },
   "type": "module",
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
