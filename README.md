@@ -91,22 +91,83 @@ await wallet.loadWallet(cip30Interface, {
 
 dexter.withWalletProvider(wallet);
 
-// Example: build via Saturn REST, then import hex → sign → submit locally
+// A) High-level: quote and build-by-asset (no need to pick poolId)
 const saturn = dexter.dexByName('SaturnSwap');
-const input = {
-  paymentAddress: wallet.address(),
-  limitOrderComponents: [
-    { poolId: '...', tokenAmountSell: 1000000, tokenAmountBuy: 500000, limitOrderType: 0, version: 1 }
-  ]
-};
 
-const txHash = await (saturn as any).buildSignSubmitViaApi(input, wallet);
-console.log('Submitted:', txHash);
+// By-asset quote (no Authorization required)
+const quote = await (saturn as any).quoteByAsset({
+  asset: '<policyId><assetNameHex>', // '' if ADA
+  direction: 3,                      // 3 = MarketBuy (ADA → token), 4 = MarketSell (token → ADA)
+  tokenAmountSell: 1.0,              // display units (ADA or token), not on-chain units
+  tokenAmountBuy: 0,                 // 0 with slippage=null lets builder choose fills
+  slippage: null                     // set a number (e.g., 0.5) only if you also set tokenAmountBuy
+});
+console.log('quote:', quote);
+
+// Build from asset (Authorization required via SATURN_API_KEY)
+// Returns first unsigned tx hex if buildable at this moment
+const hex = await (saturn as any).createFromAssetHex({
+  asset: '<policyId><assetNameHex>',
+  direction: 3,
+  tokenAmountSell: 1.0,   // try 1–2 ADA (very small sizes like 0.5 ADA can be rejected by min-output rules)
+  tokenAmountBuy: 0,
+  slippage: null,
+  paymentAddress: wallet.address()
+});
+
+// Sign + submit locally (or use advanced/sign for pre-cosigned flows)
+if (hex) {
+  const tx = wallet.newTransactionFromHex(hex);
+  await tx.sign();
+  await tx.submit();
+  console.log('Submitted:', tx.hash);
+}
+
+// B) Lower-level: build via specific poolId (if you want to route yourself)
+// const input = {
+//   paymentAddress: wallet.address(),
+//   limitOrderComponents: [
+//     { poolId: '...', tokenAmountSell: 1000000, tokenAmountBuy: 500000, limitOrderType: 0, version: 1 }
+//   ]
+// };
+// const txHash = await (saturn as any).buildSignSubmitViaApi(input, wallet);
+// console.log('Submitted:', txHash);
 ```
 
 Environment variables:
 - `SATURN_API_BASE_URL` (e.g., `https://api.saturnswap.xyz`)
 - `SATURN_API_KEY` or `SATURN_API_TOKEN` (will be sent as `Authorization: Bearer <value>`)
+
+#### SaturnSwap by-asset inputs at a glance
+- `asset`: concatenation of `policyId + assetNameHex` (no separator). Use empty string `''` for ADA.
+- `direction`:
+  - `3` MarketBuy (spend ADA → receive token). `tokenAmountSell` is ADA (display units).
+  - `4` MarketSell (sell token → receive ADA). `tokenAmountSell` is token amount (display units).
+- `tokenAmountSell` / `tokenAmountBuy`: display units (we scale by decimals internally).
+- `slippage`:
+  - When `tokenAmountBuy = 0`, set `slippage = null` (builder treats buy=0+slippage as a hard fail).
+  - To enforce minimum output, first call `quote`, then set `tokenAmountBuy = quote.expectedBuy` and `slippage = e.g., 0.5`.
+
+#### SaturnSwap API surface in this SDK
+- Discovery:
+  - `SaturnSwapApi.assets()`: GET `/v1/aggregator/assets`
+  - `SaturnSwapApi.orderbook(assetA, assetB)`: GET `/v1/aggregator/orderbook`
+  - `SaturnSwapApi.quoteByAsset(input)`: POST `/v1/aggregator/quote`
+- Build / Sign / Submit:
+  - `SaturnSwapApi.createOrderTransactionSimple(...)`: POST `/v1/aggregator/simple/create-order-transaction`
+  - `SaturnSwapApi.createOrderTransactionFromAsset(input)`: POST `/v1/aggregator/simple/create-from-asset`
+  - `SaturnSwapApi.signOrderTransactionAdvanced(...)`: POST `/v1/aggregator/advanced/sign-order-transaction`
+  - `SaturnSwapApi.submitOrderTransactionSimple(...)`: POST `/v1/aggregator/simple/submit-order-transaction`
+- Dexter convenience (in `SaturnSwap`):
+  - `quoteByAsset(input)`
+  - `createFromAssetHex(input)` → hex
+  - `buildFromAssetSignSubmit(input, wallet)` → txHash
+  - Legacy pool-based helpers: `buildSwapOrder(...)`, `createSimpleOrderHexViaApi(...)`, `buildSignSubmitViaApi(...)`
+
+#### Troubleshooting tips
+- Pool-specific depth: an asset may have bids/asks overall but your chosen pool could be empty at build time. Use `quoteByAsset` (auto-routes to a spendable pool).  
+- Small sizes: very small ADA spends (e.g., 0.5) can fail due to min-output/fee constraints—try ≥1–2 ADA.
+- Units: always send display units (ADA or token). Do not pre-scale to on-chain units.
 
 ### Dexter API
 All providers outlined below are modular, so you can extend the 'base' of the specific provider you want to supply, and provide it

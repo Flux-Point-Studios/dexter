@@ -1,5 +1,49 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+This project adheres to Semantic Versioning. Dates are in UTC.
+
+## [0.0.6] - 2025-11-09
+### Added
+- SaturnSwap REST wrappers:
+  - `SaturnSwapApi.quoteByAsset(input)` → POST `/v1/aggregator/quote`
+  - `SaturnSwapApi.createOrderTransactionFromAsset(input)` → POST `/v1/aggregator/simple/create-from-asset`
+- SaturnSwap convenience methods (in `SaturnSwap`):
+  - `quoteByAsset(input)`
+  - `createFromAssetHex(input)` → first tx hex
+  - `buildFromAssetSignSubmit(input, wallet)` → sign+submit locally
+### Changed
+- README: expanded SaturnSwap section with by-asset quote/build examples, API surface, and troubleshooting.
+- Tests: suite passes (53/53).
+
+## [0.0.5] - 2025-11-09
+### Fixed
+- `package.json` repository/homepage/bugs links updated to `Flux-Point-Studios/dexter`.
+### Changed
+- Published to npm under `@fluxpointstudios/dexter`.
+
+## [0.0.4] - 2025-11-09
+### Fixed
+- GitHub Actions publish workflow consolidated; removed duplicate top-level keys.
+
+## [0.0.3] - 2025-11-09
+### Fixed
+- `utils.appendSlash` now returns the original value when it already ends with `/`.
+- Saturn REST client test updated; CI green.
+
+## [0.0.2] - 2025-11-06
+### Added
+- Initial fork & rename; Bun build retained.
+- SaturnSwap REST client and provider scaffold.
+- Publish workflow to npm on tag (requires `NPM_TOKEN`).
+
+---
+
+Unreleased changes are tracked in PRs until a tag is pushed.
+
+# Changelog
+
 All notable changes to Dexter will be documented in this file.
 
 ## [v5.4.9]
