@@ -17,6 +17,14 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 - README: expanded SaturnSwap section with by-asset quote/build examples, API surface, and troubleshooting.
 - Tests: suite passes (53/53).
 
+## [0.0.7] - 2025-11-09
+### Changed
+- Documentation updates only (README/CHANGELOG). Tag created but not published to npm due to unchanged package version.
+
+## [0.0.8] - 2025-11-09
+### Changed
+- Bump package version to publish README/CHANGELOG to npm.
+
 ## [0.0.5] - 2025-11-09
 ### Fixed
 - `package.json` repository/homepage/bugs links updated to `Flux-Point-Studios/dexter`.
