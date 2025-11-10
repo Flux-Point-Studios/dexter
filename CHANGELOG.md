@@ -25,6 +25,10 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 ### Changed
 - Bump package version to publish README/CHANGELOG to npm.
 
+## [0.0.9] - 2025-11-09
+### Fixed
+- Exported `QuoteRequest`/`QuoteResponse`/`CreateFromAssetInput` and annotated return type to satisfy TS4053 in published types.
+
 ## [0.0.5] - 2025-11-09
 ### Fixed
 - `package.json` repository/homepage/bugs links updated to `Flux-Point-Studios/dexter`.
