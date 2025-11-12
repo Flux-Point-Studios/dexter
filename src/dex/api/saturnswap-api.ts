@@ -97,6 +97,27 @@ export class SaturnSwapApi extends BaseApi {
         return data;
     }
 
+    // ===== AMM facade (new) =====
+    async getAmmPools(): Promise<AmmPoolDTO[]> {
+        const { data } = await this.api.get<AmmPoolsResponse>('/v1/aggregator/pools');
+        return data?.pools ?? [];
+    }
+
+    async getAmmPoolById(poolId: string): Promise<AmmPoolById | undefined> {
+        const { data } = await this.api.get<AmmPoolById>('/v1/aggregator/pools/by-pool', { params: { id: poolId } as any });
+        return data;
+    }
+
+    async ammQuote(req: AmmQuoteRequest): Promise<AmmQuoteResponse> {
+        const { data } = await this.api.post<AmmQuoteResponse>('/v1/aggregator/amm/quote', req);
+        return data;
+    }
+
+    async ammBuildOrder(req: AmmBuildRequest): Promise<AmmBuildResponse> {
+        const { data } = await this.api.post<AmmBuildResponse>('/v1/aggregator/amm/build-order', req);
+        return data;
+    }
+
     // ===== Dexter compatibility: fabricate a minimal pool from orderbook =====
     async liquidityPools(assetA?: Token, assetB?: Token): Promise<LiquidityPool[]> {
         if (!assetA || !assetB) return [];
@@ -155,6 +176,57 @@ export class SaturnSwapApi extends BaseApi {
 }
 
 // ===== Types =====
+
+// AMM facade types
+export interface AmmPoolDTO {
+    id: string;                   // "<unitA>-<unitB>"
+    assetA: { unit: string };
+    assetB: { unit: string };
+    reserveA: string | number;
+    reserveB: string | number;
+    feePercent: number;
+}
+
+export interface AmmPoolsResponse {
+    pools: AmmPoolDTO[];
+}
+
+export interface AmmPoolById {
+    id: string;
+    bestBid?: number;
+    bestAsk?: number;
+    buildable?: {
+        marketBuyFromAda?: boolean;
+        marketSellToAda?: boolean;
+    };
+    snapshotAt?: string;
+}
+
+export interface AmmQuoteRequest {
+    poolId: string;
+    direction: 'in' | 'out';
+    swapInAmount?: number;
+    swapOutAmount?: number;
+    slippageBps?: number;
+}
+
+export interface AmmQuoteResponse {
+    expectedIn?: string;
+    expectedOut?: string;
+    minReceive?: string;
+    pool?: AmmPoolDTO;
+    snapshotAt?: string;
+}
+
+export interface AmmBuildRequest extends AmmQuoteRequest {
+    changeAddress: string;
+}
+
+export interface AmmBuildResponse {
+    unsignedCborHex: string;
+    minReceive: string;
+    expiry: number;
+}
 
 interface AggregatorOrderbookAssetDTO {
     policyId?: string | null;

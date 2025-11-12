@@ -41,6 +41,7 @@ export * from './dex/models/dex-transaction';
 export * from './dex/base-dex';
 export * from './dex/minswap';
 export * from './dex/saturnswap';
+export * from './dex/saturnswap-amm';
 export * from './dex/minswap-v2';
 export * from './dex/sundaeswap-v1';
 export * from './dex/sundaeswap-v3';

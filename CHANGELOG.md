@@ -29,6 +29,18 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 ### Fixed
 - Exported `QuoteRequest`/`QuoteResponse`/`CreateFromAssetInput` and annotated return type to satisfy TS4053 in published types.
 
+## [0.0.10] - 2025-11-09
+### Added
+- SaturnSwap-AMM provider (virtual AMM facade) that:
+  - Discovers pools via REST `/v1/aggregator/pools`
+  - Implements `estimatedGive/estimatedReceive/priceImpact` using constant-product math from reserves + fee
+  - Exposes optional server quote/build wrappers: `ammQuote`, `ammBuildOrder`
+- API client additions:
+  - `getAmmPools`, `getAmmPoolById`, `ammQuote`, `ammBuildOrder`
+### Changed
+- Registered `SaturnSwap-AMM` in `Dexter.availableDexs`.
+- README: document AMM facade usage and notes.
+
 ## [0.0.5] - 2025-11-09
 ### Fixed
 - `package.json` repository/homepage/bugs links updated to `Flux-Point-Studios/dexter`.

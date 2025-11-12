@@ -21,6 +21,7 @@ import { MinswapV2 } from '@dex/minswap-v2';
 import { WingRidersV2 } from '@dex/wingriders-v2';
 import { Splash } from '@dex/splash';
 import { SaturnSwap } from '@dex/saturnswap';
+import { SaturnSwapAMM } from '@dex/saturnswap-amm';
 
 export class Dexter {
 
@@ -70,6 +71,7 @@ export class Dexter {
             [VyFinance.identifier]: new VyFinance(this.requestConfig),
             [Splash.identifier]: new Splash(this.requestConfig),
             [SaturnSwap.identifier]: new SaturnSwap(this.requestConfig),
+            [SaturnSwapAMM.identifier]: new SaturnSwapAMM(this.requestConfig),
         };
     }
 

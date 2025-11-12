@@ -169,6 +169,33 @@ Environment variables:
 - Small sizes: very small ADA spends (e.g., 0.5) can fail due to min-output/fee constraints—try ≥1–2 ADA.
 - Units: always send display units (ADA or token). Do not pre-scale to on-chain units.
 
+### SaturnSwap-AMM (virtual AMM facade)
+For apps that prefer AMM-like math and pool discovery (like Minswap/WingRiders), you can use the Saturn AMM facade:
+
+```ts
+import { Dexter, SaturnSwapAMM } from '@fluxpointstudios/dexter';
+
+const dexter = new Dexter();
+const amm = dexter.dexByName(SaturnSwapAMM.identifier) as SaturnSwapAMM;
+
+// Pull AMM pools via REST
+const pools = await amm.liquidityPools();
+console.log('AMM pools', pools.length);
+
+// AMM math (constant product) works like other providers
+const pool = pools[0];
+const estimated = amm.estimatedReceive(pool, 'lovelace', 1_000_000n); // 1 ADA in lovelace
+
+// Optional server quote/build (on-chain units)
+const quote = await (amm.api as any).ammQuote({ poolId: pool.identifier, direction: 'in', swapInAmount: 1_000_000, slippageBps: 50 });
+const hex = await (amm.api as any).ammBuildOrder({ poolId: pool.identifier, direction: 'in', swapInAmount: 1_000_000, slippageBps: 50, changeAddress: '<bech32>' });
+```
+
+Notes:
+- Pools and quotes require no API key.
+- `ammBuildOrder` returns an unsigned CBOR placeholder; sign/submit locally with your wallet.
+- Pool snapshots are cached ~1–2s; re-quote if you need a fresh snapshot for minReceive checks.
+
 ### Dexter API
 All providers outlined below are modular, so you can extend the 'base' of the specific provider you want to supply, and provide it
 to Dexter with one of the methods below.

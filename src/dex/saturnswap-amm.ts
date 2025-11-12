@@ -1,0 +1,92 @@
+import { BaseDex } from './base-dex';
+import { LiquidityPool } from './models/liquidity-pool';
+import { Token, Asset } from './models/asset';
+import { BaseDataProvider } from '@providers/data/base-data-provider';
+import { RequestConfig, PayToAddress, SwapFee, UTxO } from '@app/types';
+import { BaseApi } from '@dex/api/base-api';
+import { SaturnSwapApi, AmmPoolDTO } from './api/saturnswap-api';
+import { correspondingReserves } from '@app/utils';
+
+export class SaturnSwapAMM extends BaseDex {
+
+    public static readonly identifier: string = 'SaturnSwap-AMM';
+    public readonly api: BaseApi;
+
+    constructor(requestConfig: RequestConfig = {}) {
+        super();
+        this.api = new SaturnSwapApi(this as any, requestConfig);
+    }
+
+    public async liquidityPoolAddresses(_provider?: BaseDataProvider): Promise<string[]> {
+        return [];
+    }
+
+    public async liquidityPools(_provider?: BaseDataProvider): Promise<LiquidityPool[]> {
+        const pools = await (this.api as SaturnSwapApi).getAmmPools();
+        return pools.map((p: AmmPoolDTO) => this.poolFromDTO(p)).filter(Boolean) as LiquidityPool[];
+    }
+
+    public async liquidityPoolFromUtxo(_provider: BaseDataProvider): Promise<LiquidityPool | undefined> {
+        return undefined;
+    }
+
+    public estimatedGive(liquidityPool: LiquidityPool, swapOutToken: Token, swapOutAmount: bigint): bigint {
+        const feeFraction = liquidityPool.poolFeePercent / 100;
+        const feeBps = Math.round(feeFraction * 10_000);
+        const feeMul = 10_000n - BigInt(feeBps);
+        const [reserveOut, reserveIn] = correspondingReserves(liquidityPool, swapOutToken);
+        const numerator = swapOutAmount * reserveIn * 10_000n;
+        const denominator = (reserveOut - swapOutAmount) * feeMul;
+        return (numerator + denominator - 1n) / denominator;
+    }
+
+    public estimatedReceive(liquidityPool: LiquidityPool, swapInToken: Token, swapInAmount: bigint): bigint {
+        const feeFraction = liquidityPool.poolFeePercent / 100;
+        const feeBps = Math.round(feeFraction * 10_000);
+        const feeMul = 10_000n - BigInt(feeBps);
+        const [reserveIn, reserveOut] = correspondingReserves(liquidityPool, swapInToken);
+        const numerator = swapInAmount * feeMul * reserveOut;
+        const denominator = reserveIn * 10_000n + swapInAmount * feeMul;
+        return numerator / denominator;
+    }
+
+    public priceImpactPercent(liquidityPool: LiquidityPool, swapInToken: Token, swapInAmount: bigint): number {
+        const [reserveIn, reserveOut] = correspondingReserves(liquidityPool, swapInToken);
+        if (swapInAmount === 0n || reserveIn === 0n || reserveOut === 0n) return 0;
+        const p0 = Number(reserveOut) / Number(reserveIn);
+        const out = this.estimatedReceive(liquidityPool, swapInToken, swapInAmount);
+        const p1 = Number(reserveOut - out) / Number(reserveIn + swapInAmount);
+        return ((p0 - p1) / p0) * 100;
+    }
+
+    public async buildSwapOrder(): Promise<PayToAddress[]> {
+        throw new Error('SaturnSwap-AMM: use ammBuildOrder (createAmmUnsignedHex) and sign locally instead.');
+    }
+
+    public async buildCancelSwapOrder(_txOutputs: UTxO[], _returnAddress: string): Promise<PayToAddress[]> {
+        throw new Error('SaturnSwap-AMM: cancel via CLOB provider if needed.');
+    }
+
+    public swapOrderFees(): SwapFee[] {
+        return [];
+    }
+
+    private poolFromDTO(p: AmmPoolDTO): LiquidityPool | undefined {
+        const a = this.unitToToken(p.assetA?.unit);
+        const b = this.unitToToken(p.assetB?.unit);
+        const reserveA = BigInt(p.reserveA ?? 0);
+        const reserveB = BigInt(p.reserveB ?? 0);
+        const lp = new LiquidityPool(SaturnSwapAMM.identifier, a, b, reserveA, reserveB, '');
+        lp.poolFeePercent = p.feePercent ?? 0;
+        lp.identifier = p.id;
+        return lp;
+    }
+
+    private unitToToken(unit: string): Token {
+        if (!unit || unit === 'lovelace') return 'lovelace';
+        const [policyId, assetName] = unit.split('.');
+        return new Asset(policyId, assetName);
+    }
+}
+
+
