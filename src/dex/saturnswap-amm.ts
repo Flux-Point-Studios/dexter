@@ -73,8 +73,11 @@ export class SaturnSwapAMM extends BaseDex {
     }
 
     private poolFromDTO(p: AmmPoolDTO): LiquidityPool | undefined {
-        const a = this.unitToToken(p.assetA?.unit);
-        const b = this.unitToToken(p.assetB?.unit);
+        // Backend returns assetA/assetB as strings, not { unit: string }
+        const unitA = typeof p.assetA === 'string' ? p.assetA : p.assetA?.unit;
+        const unitB = typeof p.assetB === 'string' ? p.assetB : p.assetB?.unit;
+        const a = this.unitToToken(unitA);
+        const b = this.unitToToken(unitB);
         const reserveA = BigInt(p.reserveA ?? 0);
         const reserveB = BigInt(p.reserveB ?? 0);
         const lp = new LiquidityPool(SaturnSwapAMM.identifier, a, b, reserveA, reserveB, '');

@@ -29,7 +29,7 @@ export class SaturnSwapApi extends BaseApi {
 
         const baseUrl = baseEnv && baseEnv.length > 0
             ? baseEnv
-            : 'https://api.saturnswap.xyz';
+            : 'https://api.saturnswap.io';
 
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -99,8 +99,9 @@ export class SaturnSwapApi extends BaseApi {
 
     // ===== AMM facade (new) =====
     async getAmmPools(): Promise<AmmPoolDTO[]> {
-        const { data } = await this.api.get<AmmPoolsResponse>('/v1/aggregator/pools');
-        return data?.pools ?? [];
+        const { data } = await this.api.get<AmmPoolDTO[] | AmmPoolsResponse>('/v1/aggregator/pools');
+        // Backend returns array directly, not wrapped in { pools: [...] }
+        return Array.isArray(data) ? data : (data?.pools ?? []);
     }
 
     async getAmmPoolById(poolId: string): Promise<AmmPoolById | undefined> {
@@ -180,11 +181,12 @@ export class SaturnSwapApi extends BaseApi {
 // AMM facade types
 export interface AmmPoolDTO {
     id: string;                   // "<unitA>-<unitB>"
-    assetA: { unit: string };
-    assetB: { unit: string };
+    assetA: string | { unit: string };  // Backend returns string; support both for flexibility
+    assetB: string | { unit: string };
     reserveA: string | number;
     reserveB: string | number;
     feePercent: number;
+    updatedAt?: string;
 }
 
 export interface AmmPoolsResponse {

@@ -46,6 +46,11 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 - `ammBuildOrder` now returns real unsigned CBOR; README updated to show sign/submit.
 - Added `buildAmmSignSubmit` convenience method to `SaturnSwap-AMM`.
 
+## [0.0.13] - 2025-11-13
+### Fixed
+- Default SaturnSwap API host updated from `api.saturnswap.xyz` to `api.saturnswap.io`.
+- AMM pools response handling: backend returns array directly (not `{ pools: [...] }`) and `assetA`/`assetB` as strings (not `{ unit: string }`); SDK now handles both formats.
+
 ## [0.0.12] - 2025-11-13
 ### Changed
 - Default behavior: only `SaturnSwap-AMM` is registered; CLOB (`SaturnSwap`) is now optional.
