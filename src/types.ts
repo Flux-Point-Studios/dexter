@@ -9,6 +9,7 @@ export interface DexterConfig {
   shouldFallbackToApi?: boolean;
   shouldSubmitOrders?: boolean;
   metadataMsgBranding?: string;
+  enableSaturnClob?: boolean;
 }
 
 export interface RequestConfig {

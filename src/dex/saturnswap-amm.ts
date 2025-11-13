@@ -6,6 +6,7 @@ import { RequestConfig, PayToAddress, SwapFee, UTxO } from '@app/types';
 import { BaseApi } from '@dex/api/base-api';
 import { SaturnSwapApi, AmmPoolDTO } from './api/saturnswap-api';
 import { correspondingReserves } from '@app/utils';
+import { BaseWalletProvider } from '@providers/wallet/base-wallet-provider';
 
 export class SaturnSwapAMM extends BaseDex {
 
@@ -86,6 +87,34 @@ export class SaturnSwapAMM extends BaseDex {
         if (!unit || unit === 'lovelace') return 'lovelace';
         const [policyId, assetName] = unit.split('.');
         return new Asset(policyId, assetName);
+    }
+
+    public async createAmmUnsignedHex(poolId: string, direction: 'in' | 'out', swapAmount: number, changeAddress: string, slippageBps?: number): Promise<string> {
+        const api = this.api as SaturnSwapApi;
+        const req: any = direction === 'in'
+            ? { poolId, direction, swapInAmount: swapAmount, slippageBps, changeAddress }
+            : { poolId, direction, swapOutAmount: swapAmount, slippageBps, changeAddress };
+        const res = await api.ammBuildOrder(req);
+        return res.unsignedCborHex;
+    }
+
+    /**
+     * Convenience: build via AMM endpoint, then sign+submit locally.
+     */
+    public async buildAmmSignSubmit(args: {
+        poolId: string;
+        direction: 'in' | 'out';
+        swapAmount: number;           // on-chain units
+        changeAddress: string;        // bech32
+        slippageBps?: number;
+    }, wallet?: BaseWalletProvider): Promise<string> {
+        if (!wallet) throw new Error('Wallet provider is required for local signing.');
+        const hex = await this.createAmmUnsignedHex(args.poolId, args.direction, args.swapAmount, args.changeAddress, args.slippageBps);
+        if (!hex) throw new Error('AMM build did not return an unsigned CBOR hex.');
+        const tx = wallet.newTransactionFromHex(hex);
+        await tx.sign();
+        await tx.submit();
+        return tx.hash;
     }
 }
 

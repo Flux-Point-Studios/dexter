@@ -42,6 +42,7 @@ export class Dexter {
                 shouldFallbackToApi: true,
                 shouldSubmitOrders: false,
                 metadataMsgBranding: 'Dexter',
+                enableSaturnClob: false,
             } as DexterConfig,
             config,
         );
@@ -70,9 +71,11 @@ export class Dexter {
             [WingRidersV2.identifier]: new WingRidersV2(this.requestConfig),
             [VyFinance.identifier]: new VyFinance(this.requestConfig),
             [Splash.identifier]: new Splash(this.requestConfig),
-            [SaturnSwap.identifier]: new SaturnSwap(this.requestConfig),
             [SaturnSwapAMM.identifier]: new SaturnSwapAMM(this.requestConfig),
         };
+        if (this.config.enableSaturnClob) {
+            this.availableDexs[SaturnSwap.identifier] = new SaturnSwap(this.requestConfig);
+        }
     }
 
     /**

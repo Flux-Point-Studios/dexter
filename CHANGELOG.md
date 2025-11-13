@@ -41,6 +41,17 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 - Registered `SaturnSwap-AMM` in `Dexter.availableDexs`.
 - README: document AMM facade usage and notes.
 
+## [0.0.11] - 2025-11-09
+### Changed
+- `ammBuildOrder` now returns real unsigned CBOR; README updated to show sign/submit.
+- Added `buildAmmSignSubmit` convenience method to `SaturnSwap-AMM`.
+
+## [0.0.12] - 2025-11-13
+### Changed
+- Default behavior: only `SaturnSwap-AMM` is registered; CLOB (`SaturnSwap`) is now optional.
+- Added `enableSaturnClob` flag in `DexterConfig` (default false) to register the CLOB provider.
+- README restructured: AMM is the primary flow; CLOB REST is “Advanced (Optional)” with opt-in instructions.
+
 ## [0.0.5] - 2025-11-09
 ### Fixed
 - `package.json` repository/homepage/bugs links updated to `Flux-Point-Studios/dexter`.
