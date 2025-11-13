@@ -82,10 +82,8 @@ export class SaturnSwapAMM extends BaseDex {
         const reserveB = BigInt(p.reserveB ?? 0);
         const lp = new LiquidityPool(SaturnSwapAMM.identifier, a, b, reserveA, reserveB, '');
         lp.poolFeePercent = p.feePercent ?? 0;
-        lp.identifier = p.id; // Fabricated AMM facade ID
-        // Store the backend's real poolId in extra for quote/build calls
-        if (!lp.extra) lp.extra = {};
-        lp.extra.poolId = p.poolId ?? p.id; // Use real poolId if available, fallback to id
+        // Backend provides both id and poolId (same value - the real poolId)
+        lp.identifier = p.poolId ?? p.id; // Use poolId if available, fallback to id (backward compatibility)
         return lp;
     }
 
@@ -97,30 +95,12 @@ export class SaturnSwapAMM extends BaseDex {
 
     public async createAmmUnsignedHex(poolId: string, direction: 'in' | 'out', swapAmount: number, changeAddress: string, slippageBps?: number): Promise<string> {
         const api = this.api as SaturnSwapApi;
-        // Resolve real poolId if poolId looks like a fabricated AMM facade ID (contains hyphen)
-        const realPoolId = await this.resolveRealPoolId(poolId);
+        // poolId is the backend's real poolId (no fabrication - use directly)
         const req: any = direction === 'in'
-            ? { poolId: realPoolId, direction, swapInAmount: swapAmount, slippageBps, changeAddress }
-            : { poolId: realPoolId, direction, swapOutAmount: swapAmount, slippageBps, changeAddress };
+            ? { poolId, direction, swapInAmount: swapAmount, slippageBps, changeAddress }
+            : { poolId, direction, swapOutAmount: swapAmount, slippageBps, changeAddress };
         const res = await api.ammBuildOrder(req);
         return res.unsignedCborHex;
-    }
-
-    /**
-     * Resolve the backend's real poolId from a fabricated AMM facade ID or use the provided value if it's already a real poolId.
-     * Backend now includes poolId in the response, so we can resolve it directly.
-     */
-    private async resolveRealPoolId(poolIdOrAmmId: string): Promise<string> {
-        // If it doesn't look like a fabricated ID (no hyphen), assume it's already a real poolId
-        if (!poolIdOrAmmId.includes('-')) {
-            return poolIdOrAmmId;
-        }
-        // Otherwise, fetch pools and find the matching one to get the real poolId
-        // Backend now includes poolId in each pool object
-        const pools = await (this.api as SaturnSwapApi).getAmmPools();
-        const match = pools.find(p => p.id === poolIdOrAmmId || p.poolId === poolIdOrAmmId);
-        // Prefer poolId from backend, fallback to id if poolId is missing (backward compatibility)
-        return match?.poolId ?? match?.id ?? poolIdOrAmmId;
     }
 
     /**

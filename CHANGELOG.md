@@ -48,10 +48,10 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 
 ## [0.0.14] - 2025-11-13
 ### Fixed
-- AMM facade now uses backend's real `poolId` for quote/build calls instead of fabricated AMM facade IDs.
-- Added `poolId` field to `AmmPoolDTO` and `AmmPoolById` interfaces (backend now includes this in responses).
-- `createAmmUnsignedHex` automatically resolves real `poolId` from fabricated AMM facade IDs.
-- Real `poolId` is stored in `LiquidityPool.extra.poolId` for reference.
+- Removed all fabricated ID logic - SDK now uses backend's real `poolId` directly (no fabrication).
+- Added `poolId` field to `AmmPoolDTO` and `AmmPoolById` interfaces (backend provides both `id` and `poolId` - same value).
+- `LiquidityPool.identifier` now uses backend's real `poolId` (from `poolId ?? id`).
+- `createAmmUnsignedHex` uses `poolId` directly without any resolution logic.
 
 ## [0.0.13] - 2025-11-13
 ### Fixed

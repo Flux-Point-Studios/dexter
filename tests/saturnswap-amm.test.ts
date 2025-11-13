@@ -149,14 +149,11 @@ describe('SaturnSwap-AMM facade', () => {
 
   it('buildAmmSignSubmit propagates build errors', async () => {
     const amm = new SaturnSwapAMM({} as any);
-    // Mock getAmmPools to return a pool with the fabricated ID
-    (amm.api as any).getAmmPools = async () => [
-      { id: 'lovelace-foo.bar', poolId: 'real-pool-id-123', assetA: 'lovelace', assetB: 'foo.bar', reserveA: 0, reserveB: 0, feePercent: 0.3 }
-    ];
+    // poolId is the backend's real poolId (no resolution needed)
     (amm.api as any).ammBuildOrder = async () => { throw new Error('No valid transactions found'); };
     const wallet = new MockWalletProvider();
     await expect(amm.buildAmmSignSubmit({
-      poolId: 'lovelace-foo.bar',
+      poolId: 'real-pool-id-123', // Backend's real poolId
       direction: 'in',
       swapAmount: 1_000_000,
       changeAddress: 'addr1qtest'
