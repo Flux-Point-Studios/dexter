@@ -46,6 +46,13 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 - `ammBuildOrder` now returns real unsigned CBOR; README updated to show sign/submit.
 - Added `buildAmmSignSubmit` convenience method to `SaturnSwap-AMM`.
 
+## [0.0.14] - 2025-11-13
+### Fixed
+- AMM facade now uses backend's real `poolId` for quote/build calls instead of fabricated AMM facade IDs.
+- Added `poolId` field to `AmmPoolDTO` and `AmmPoolById` interfaces (backend now includes this in responses).
+- `createAmmUnsignedHex` automatically resolves real `poolId` from fabricated AMM facade IDs.
+- Real `poolId` is stored in `LiquidityPool.extra.poolId` for reference.
+
 ## [0.0.13] - 2025-11-13
 ### Fixed
 - Default SaturnSwap API host updated from `api.saturnswap.xyz` to `api.saturnswap.io`.

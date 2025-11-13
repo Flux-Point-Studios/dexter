@@ -180,7 +180,8 @@ export class SaturnSwapApi extends BaseApi {
 
 // AMM facade types
 export interface AmmPoolDTO {
-    id: string;                   // "<unitA>-<unitB>"
+    id: string;                   // "<unitA>-<unitB>" (fabricated AMM facade ID)
+    poolId?: string;              // Backend's real poolId (now included in response)
     assetA: string | { unit: string };  // Backend returns string; support both for flexibility
     assetB: string | { unit: string };
     reserveA: string | number;
@@ -195,6 +196,7 @@ export interface AmmPoolsResponse {
 
 export interface AmmPoolById {
     id: string;
+    poolId?: string;              // Backend's real poolId (now included in response)
     bestBid?: number;
     bestAsk?: number;
     buildable?: {
