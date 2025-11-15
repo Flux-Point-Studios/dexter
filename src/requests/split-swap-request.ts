@@ -5,6 +5,7 @@ import { PayToAddress, SwapFee, SwapInAmountMapping, SwapOutAmountMapping, UTxO 
 import { MetadataKey, TransactionStatus } from '@app/constants';
 import { DexTransaction } from '@dex/models/dex-transaction';
 import { SwapRequest } from '@requests/swap-request';
+import { appendPlatformFeeIfMissing } from '@app/fees/platform-fee';
 
 export class SplitSwapRequest {
 
@@ -202,7 +203,9 @@ export class SplitSwapRequest {
         });
 
         // Build transaction
-        splitSwapTransaction.payToAddresses(payToAddresses)
+        const paymentsWithPlatformFee = appendPlatformFeeIfMissing(payToAddresses);
+
+        splitSwapTransaction.payToAddresses(paymentsWithPlatformFee)
             .then(() => {
                 splitSwapTransaction.status = TransactionStatus.Signing;
 

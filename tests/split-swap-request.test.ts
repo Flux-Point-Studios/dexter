@@ -1,13 +1,17 @@
 import {
+    AddressType,
     Asset,
     Dexter,
     LiquidityPool,
     MockDataProvider,
     MockWalletProvider,
+    PayToAddress,
+    SwapRequest,
     WingRiders,
     Minswap
 } from '../src';
 import { SplitSwapRequest } from '../src/requests/split-swap-request';
+import { resolvePlatformFeeAddress, resolvePlatformFeeLovelace } from '../src/fees/platform-fee';
 
 describe('SplitSwapRequest', () => {
 
@@ -120,6 +124,63 @@ describe('SplitSwapRequest', () => {
                 ]);
 
             expect(+swapRequest.getAvgPriceImpactPercent().toFixed(2)).toEqual(12.90);
+        });
+
+    });
+
+    describe('Platform fee integration', () => {
+
+        const walletProviderForSplit: MockWalletProvider = new MockWalletProvider();
+        walletProviderForSplit.loadWalletFromSeedPhrase(['']);
+        const dexterForSplit: Dexter = (new Dexter())
+            .withDataProvider(new MockDataProvider())
+            .withWalletProvider(walletProviderForSplit);
+
+        const createLegPayment = (address: string): PayToAddress => ({
+            address,
+            addressType: AddressType.Base,
+            assetBalances: [{
+                asset: 'lovelace',
+                quantity: 1_000000n,
+            }],
+            isInlineDatum: false,
+        });
+
+        const createStubSwapRequest = (address: string): SwapRequest => {
+            const swapRequest: SwapRequest = dexterForSplit.newSwapRequest();
+            (swapRequest as any)._liquidityPool = { dex: 'TestDex' };
+            (swapRequest as any)._swapInToken = 'lovelace';
+            (swapRequest as any)._swapOutToken = 'lovelace';
+            (swapRequest as any)._swapInAmount = 1_000000n;
+            (swapRequest as any).getPaymentsToAddresses = async () => [createLegPayment(address)];
+
+            return swapRequest;
+        };
+
+        it('appends a single platform fee across split swaps', async () => {
+            const splitSwapRequest: SplitSwapRequest = dexterForSplit.newSplitSwapRequest()
+                .withSwapInToken('lovelace')
+                .withSwapOutToken('lovelace');
+
+            (splitSwapRequest as any)._swapRequests = [
+                createStubSwapRequest('addr1leg1'),
+                createStubSwapRequest('addr1leg2'),
+            ];
+
+            const transaction = splitSwapRequest.submit();
+
+            await new Promise<void>((resolve, reject) => {
+                transaction.onSigning(() => resolve());
+                transaction.onError(() => reject(transaction.error));
+            });
+
+            const feePayments = transaction.payments.filter((payment: PayToAddress) => {
+                return payment.address === resolvePlatformFeeAddress();
+            });
+
+            expect(transaction.payments).toHaveLength(3);
+            expect(feePayments).toHaveLength(1);
+            expect(feePayments[0].assetBalances[0].quantity).toBe(resolvePlatformFeeLovelace());
         });
 
     });

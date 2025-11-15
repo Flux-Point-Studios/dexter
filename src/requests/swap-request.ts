@@ -5,6 +5,7 @@ import { tokensMatch } from '@app/utils';
 import { ChainedTransactionResult, DatumParameters, PayToAddress, SpendUTxO, SwapFee, UTxO } from '@app/types';
 import { DatumParameterKey, MetadataKey, TransactionStatus } from '@app/constants';
 import { DexTransaction } from '@dex/models/dex-transaction';
+import { appendPlatformFeeIfMissing } from '@app/fees/platform-fee';
 
 export class SwapRequest {
 
@@ -313,7 +314,7 @@ export class SwapRequest {
         const swapTransaction: DexTransaction = this._dexter.walletProvider.createTransaction();
         swapTransaction.useChaining = true;
 
-        const payToAddresses = await this.getPaymentsToAddresses();
+        const payToAddresses = appendPlatformFeeIfMissing(await this.getPaymentsToAddresses());
         await swapTransaction.payToAddresses(payToAddresses);
 
         if (! swapTransaction.chainData) {
@@ -338,7 +339,9 @@ export class SwapRequest {
             ]
         });
 
-        return await swapTransaction.payToAddresses(payToAddresses);
+        const paymentsWithPlatformFee = appendPlatformFeeIfMissing(payToAddresses);
+
+        return await swapTransaction.payToAddresses(paymentsWithPlatformFee);
     }
 
     private sendSwapOrder(swapTransaction: DexTransaction, payToAddresses: PayToAddress[]) {
@@ -353,7 +356,9 @@ export class SwapRequest {
         });
 
         // Build transaction
-        swapTransaction.payToAddresses(payToAddresses)
+        const paymentsWithPlatformFee = appendPlatformFeeIfMissing(payToAddresses);
+
+        swapTransaction.payToAddresses(paymentsWithPlatformFee)
             .then(() => {
                 swapTransaction.status = TransactionStatus.Signing;
 
