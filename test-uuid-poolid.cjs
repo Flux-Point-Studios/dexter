@@ -29,15 +29,16 @@ async function testUuidPoolIds() {
             try {
                 const detailRes = await axios.get(
                     `${baseUrl}/v1/aggregator/pools/by-pool`,
-                    { params: { id: uuidPoolId }, timeout: 5000 }
+                    { params: { poolId: uuidPoolId, t: Date.now() }, timeout: 5000 }
                 );
-                console.log(`  ✅ Pool detail SUCCESS`);
+                console.log(`  ✅ Pool detail SUCCESS (?poolId) (x-correlation-id: ${detailRes.headers?.['x-correlation-id'] || 'n/a'})`);
                 console.log(`     id: ${detailRes.data?.id}`);
                 console.log(`     poolId: ${detailRes.data?.poolId}`);
-                console.log(`     buildable: ${JSON.stringify(detailRes.data?.buildable)}`);
+                console.log(`     buildableFromAda: ${detailRes.data?.buildableFromAda}`);
+                console.log(`     buildableFromToken: ${detailRes.data?.buildableFromToken}`);
 
                 // Try quote with UUID
-                if (detailRes.data?.buildable?.marketBuyFromAda) {
+                if (detailRes.data?.buildableFromAda) {
                     try {
                         const quoteRes = await axios.post(
                             `${baseUrl}/v1/aggregator/amm/quote`,
@@ -49,13 +50,24 @@ async function testUuidPoolIds() {
                             },
                             { timeout: 5000 }
                         );
-                        console.log(`     ✅ Quote SUCCESS: expectedOut=${quoteRes.data?.expectedOut}`);
+                        console.log(`     ✅ Quote SUCCESS: expectedOut=${quoteRes.data?.expectedOut}, minReceive=${quoteRes.data?.minReceive} (x-correlation-id: ${quoteRes.headers?.['x-correlation-id'] || 'n/a'})`);
                     } catch (quoteErr) {
-                        console.log(`     ❌ Quote failed: ${quoteErr.response?.status} ${quoteErr.response?.data?.error || quoteErr.message}`);
+                        console.log(`     ❌ Quote failed: ${quoteErr.response?.status} ${quoteErr.response?.data?.error || quoteErr.message} (x-correlation-id: ${quoteErr.response?.headers?.['x-correlation-id'] || 'n/a'})`);
                     }
                 }
             } catch (detailErr) {
-                console.log(`  ❌ Pool detail failed: ${detailErr.response?.status} ${detailErr.response?.data?.error || detailErr.message}`);
+                console.log(`  ❌ Pool detail failed (?poolId): ${detailErr.response?.status} ${detailErr.response?.data?.error || detailErr.message} (x-correlation-id: ${detailErr.response?.headers?.['x-correlation-id'] || 'n/a'})`);
+                // Try path form as fallback
+                try {
+                    const resPath = await axios.get(`${baseUrl}/v1/aggregator/pools/${uuidPoolId}`, { timeout: 5000, params: { t: Date.now() } });
+                    console.log(`  ✅ Pool detail SUCCESS (path) (x-correlation-id: ${resPath.headers?.['x-correlation-id'] || 'n/a'})`);
+                    console.log(`     id: ${resPath.data?.id}`);
+                    console.log(`     poolId: ${resPath.data?.poolId}`);
+                    console.log(`     buildableFromAda: ${resPath.data?.buildableFromAda}`);
+                    console.log(`     buildableFromToken: ${resPath.data?.buildableFromToken}`);
+                } catch (ePath) {
+                    console.log(`  ❌ Pool detail failed (path): ${ePath.response?.status} ${ePath.response?.data?.error || ePath.message} (x-correlation-id: ${ePath.response?.headers?.['x-correlation-id'] || 'n/a'})`);
+                }
             }
             console.log('');
         }

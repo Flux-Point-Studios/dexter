@@ -105,7 +105,17 @@ export class SaturnSwapApi extends BaseApi {
     }
 
     async getAmmPoolById(poolId: string): Promise<AmmPoolById | undefined> {
-        const { data } = await this.api.get<AmmPoolById>('/v1/aggregator/pools/by-pool', { params: { id: poolId } as any });
+        // Prefer canonical UUID in poolId; fall back to legacy pair key via id
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(poolId);
+        const params: any = isUuid ? { poolId } : { id: poolId };
+        const { data } = await this.api.get<AmmPoolById>('/v1/aggregator/pools/by-pool', { params });
+        // Normalize buildability flags for backwards compatibility
+        if (!data.buildable && (data.buildableFromAda !== undefined || data.buildableFromToken !== undefined)) {
+            (data as any).buildable = {
+                marketBuyFromAda: data.buildableFromAda,
+                marketSellToAda: data.buildableFromToken,
+            };
+        }
         return data;
     }
 
@@ -180,8 +190,8 @@ export class SaturnSwapApi extends BaseApi {
 
 // AMM facade types
 export interface AmmPoolDTO {
-    id: string;                   // Backend's poolId (same as poolId field - both are the real poolId)
-    poolId?: string;              // Backend's poolId (alias for id - included for convenience)
+    id: string;                   // Legacy pair key (e.g., <policy>.<asset>-lovelace). Canonical ID is poolId (UUID).
+    poolId?: string;              // Canonical UUID poolId
     assetA: string | { unit: string };  // Backend returns string; support both for flexibility
     assetB: string | { unit: string };
     reserveA: string | number;
@@ -196,13 +206,16 @@ export interface AmmPoolsResponse {
 
 export interface AmmPoolById {
     id: string;
-    poolId?: string;              // Backend's real poolId (now included in response)
+    poolId?: string;              // Canonical UUID poolId
     bestBid?: number;
     bestAsk?: number;
     buildable?: {
         marketBuyFromAda?: boolean;
         marketSellToAda?: boolean;
     };
+    // New flattened flags exposed by backend; we keep both for compatibility
+    buildableFromAda?: boolean;
+    buildableFromToken?: boolean;
     snapshotAt?: string;
 }
 
@@ -224,6 +237,7 @@ export interface AmmQuoteResponse {
 
 export interface AmmBuildRequest extends AmmQuoteRequest {
     changeAddress: string;
+    partnerAddress?: string;
 }
 
 export interface AmmBuildResponse {

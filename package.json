@@ -36,7 +36,8 @@
     "build": "bunx --bun tsc --project tsconfig.json && bunx --bun tsc-alias -p tsconfig.json",
     "test": "bun test",
     "prepare": "bun run build",
-    "prepublishOnly": "bun test"
+    "prepublishOnly": "bun test",
+    "smoke:saturn": "bun scripts/saturn-amm-cli.mjs"
   },
   "dependencies": {
     "@types/blake2b": "^2.1.3",

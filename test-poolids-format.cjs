@@ -17,36 +17,51 @@ async function testPoolIdFormats() {
         }
 
         const testPool = pools[0];
-        const poolId = testPool.poolId || testPool.id;
-        
-        console.log(`Testing with pool: ${poolId}`);
-        console.log(`Format: ${poolId.includes('-') ? 'Has hyphen (looks like policyId.assetName-lovelace)' : 'No hyphen'}`);
-        console.log(`Length: ${poolId.length} chars\n`);
+        const uuid = testPool.poolId;
+        const pairKey = testPool.id; // backend: id pair key (e.g., <policy>.<asset>-lovelace)
 
-        // Try different formats
-        const formats = [
-            { name: 'Full poolId as-is', value: poolId },
-            { name: 'Without -lovelace suffix', value: poolId.replace(/-lovelace$/, '') },
-            { name: 'Just assetB part', value: testPool.assetB },
+        console.log(`Testing with UUID: ${uuid}`);
+        console.log(`Pair key: ${pairKey}\n`);
+
+        // Valid forms per spec
+        const validForms = [
+            { name: 'Query ?poolId (preferred)', type: 'query', params: { poolId: uuid, t: Date.now() } },
+            { name: 'Query ?id (pair key)', type: 'query', params: { id: pairKey, t: Date.now() } },
+            { name: 'Path /pools/<uuid>', type: 'path', value: uuid },
+            { name: 'Path /pools/<pair key>', type: 'path', value: pairKey },
         ];
 
-        for (const format of formats) {
-            console.log(`Testing: ${format.name} = "${format.value}"`);
+        for (const form of validForms) {
             try {
-                const detailRes = await axios.get(
-                    `${baseUrl}/v1/aggregator/pools/by-pool`,
-                    { params: { id: format.value }, timeout: 5000 }
-                );
-                console.log(`  ✅ SUCCESS - Detail retrieved`);
-                console.log(`     id: ${detailRes.data?.id}`);
-                console.log(`     poolId: ${detailRes.data?.poolId}`);
-                console.log(`     buildable: ${JSON.stringify(detailRes.data?.buildable)}`);
-                break; // Found working format
+                if (form.type === 'query') {
+                    console.log(`Testing: ${form.name}`);
+                    const res = await axios.get(`${baseUrl}/v1/aggregator/pools/by-pool`, { params: form.params, timeout: 5000 });
+                    console.log(`  ✅ SUCCESS (x-correlation-id: ${res.headers?.['x-correlation-id'] || 'n/a'})`);
+                    console.log(`     id: ${res.data?.id}`);
+                    console.log(`     poolId: ${res.data?.poolId}`);
+                    console.log(`     buildableFromAda: ${res.data?.buildableFromAda}`);
+                    console.log(`     buildableFromToken: ${res.data?.buildableFromToken}`);
+                } else {
+                    console.log(`Testing: ${form.name}`);
+                    const res = await axios.get(`${baseUrl}/v1/aggregator/pools/${form.value}`, { timeout: 5000, params: { t: Date.now() } });
+                    console.log(`  ✅ SUCCESS (x-correlation-id: ${res.headers?.['x-correlation-id'] || 'n/a'})`);
+                    console.log(`     id: ${res.data?.id}`);
+                    console.log(`     poolId: ${res.data?.poolId}`);
+                    console.log(`     buildableFromAda: ${res.data?.buildableFromAda}`);
+                    console.log(`     buildableFromToken: ${res.data?.buildableFromToken}`);
+                }
             } catch (err) {
-                const status = err.response?.status;
-                const error = err.response?.data?.error || err.message;
-                console.log(`  ❌ Failed: ${status || 'timeout'} - ${error}`);
+                console.log(`  ❌ Failed: ${err.response?.status || 'timeout'} - ${err.response?.data?.error || err.message} (x-correlation-id: ${err.response?.headers?.['x-correlation-id'] || 'n/a'})`);
             }
+        }
+
+        // Negative: asset-only strings are not accepted for poolId
+        console.log(`\nNegative test (asset-only should fail for poolId): ${testPool.assetB}`);
+        try {
+            await axios.get(`${baseUrl}/v1/aggregator/pools/by-pool`, { params: { poolId: testPool.assetB, t: Date.now() }, timeout: 5000 });
+            console.log(`  ⚠️ Unexpected success with asset-only as poolId`);
+        } catch (err) {
+            console.log(`  ✅ Rejected as expected: ${err.response?.status || 'timeout'} (x-correlation-id: ${err.response?.headers?.['x-correlation-id'] || 'n/a'})`);
         }
 
         // Also check if maybe we need to look at /assets endpoint

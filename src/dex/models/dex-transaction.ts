@@ -49,7 +49,16 @@ export class DexTransaction {
     }
 
     public toCbor(): string {
-        return this.providerData.tx.toCBOR();
+        const tx: any = this.providerData?.tx;
+        if (!tx) {
+            throw new Error('Transaction builder not initialized');
+        }
+        // Prefer canonical toCBOR; fall back to common alternatives
+        if (typeof tx.toCBOR === 'function') return tx.toCBOR();
+        if (typeof tx.toHex === 'function') return tx.toHex();
+        if (typeof tx.toCbor === 'function') return tx.toCbor();
+        if (typeof tx.to_cbor === 'function') return tx.to_cbor();
+        throw new Error('Provider transaction does not expose a CBOR/hex serializer');
     }
 
     public attachMetadata(key: number, json: Object): DexTransaction {

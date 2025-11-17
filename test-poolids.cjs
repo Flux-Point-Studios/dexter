@@ -73,28 +73,69 @@ async function testPoolIds() {
             console.log('2. ⚠️  No suitable pool found for quote test');
         }
 
-        // Test 3: Check pool detail endpoint
+        // Test 3: Check pool detail endpoint using supported forms
         if (testPool?.poolId) {
-            console.log(`\n3. Testing GET /v1/aggregator/pools/by-pool?id=${testPool.poolId}`);
+            const pairKey = testPool.id; // backend: id is the legacy pair key
+            let detail;
+
+            console.log(`\n3. Testing by-pool with poolId (preferred): /v1/aggregator/pools/by-pool?poolId=${testPool.poolId}`);
             try {
-                const detailRes = await axios.get(
-                    `${baseUrl}/v1/aggregator/pools/by-pool`,
-                    {
-                        params: { id: testPool.poolId },
-                        timeout,
-                        headers: { 'Content-Type': 'application/json' }
-                    }
-                );
-                console.log(`   ✅ Pool detail successful`);
-                console.log(`   id: ${detailRes.data?.id || 'MISSING'}`);
-                console.log(`   poolId: ${detailRes.data?.poolId || 'MISSING'}`);
-                console.log(`   ids match: ${detailRes.data?.id === detailRes.data?.poolId ? '✅' : '❌'}`);
-            } catch (detailErr) {
-                if (detailErr.response) {
-                    console.log(`   ❌ Pool detail failed: ${detailErr.response.status} ${detailErr.response.statusText}`);
-                } else {
-                    console.log(`   ❌ Pool detail failed: ${detailErr.message}`);
+                const res = await axios.get(`${baseUrl}/v1/aggregator/pools/by-pool`, {
+                    params: { poolId: testPool.poolId, t: Date.now() },
+                    timeout,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                detail = res.data;
+                console.log(`   ✅ Detail via ?poolId succeeded (x-correlation-id: ${res.headers?.['x-correlation-id'] || 'n/a'})`);
+            } catch (e1) {
+                console.log(`   ❌ ?poolId lookup failed: ${e1.response?.status || e1.message} (x-correlation-id: ${e1.response?.headers?.['x-correlation-id'] || 'n/a'})`);
+            }
+
+            if (!detail) {
+                console.log(`   Trying by-pool with pair key id: /v1/aggregator/pools/by-pool?id=${pairKey}`);
+                try {
+                    const res = await axios.get(`${baseUrl}/v1/aggregator/pools/by-pool`, {
+                        params: { id: pairKey, t: Date.now() },
+                        timeout
+                    });
+                    detail = res.data;
+                    console.log(`   ✅ Detail via ?id pair key succeeded (x-correlation-id: ${res.headers?.['x-correlation-id'] || 'n/a'})`);
+                } catch (e2) {
+                    console.log(`   ❌ ?id pair key lookup failed: ${e2.response?.status || e2.message} (x-correlation-id: ${e2.response?.headers?.['x-correlation-id'] || 'n/a'})`);
                 }
+            }
+
+            if (!detail) {
+                console.log(`   Trying path with UUID: /v1/aggregator/pools/${testPool.poolId}`);
+                try {
+                    const res = await axios.get(`${baseUrl}/v1/aggregator/pools/${testPool.poolId}`, { timeout, params: { t: Date.now() } });
+                    detail = res.data;
+                    console.log(`   ✅ Detail via path UUID succeeded (x-correlation-id: ${res.headers?.['x-correlation-id'] || 'n/a'})`);
+                } catch (e3) {
+                    console.log(`   ❌ Path UUID lookup failed: ${e3.response?.status || e3.message} (x-correlation-id: ${e3.response?.headers?.['x-correlation-id'] || 'n/a'})`);
+                }
+            }
+
+            if (!detail) {
+                console.log(`   Trying path with pair key: /v1/aggregator/pools/${pairKey}`);
+                try {
+                    const res = await axios.get(`${baseUrl}/v1/aggregator/pools/${pairKey}`, { timeout, params: { t: Date.now() } });
+                    detail = res.data;
+                    console.log(`   ✅ Detail via path pair key succeeded (x-correlation-id: ${res.headers?.['x-correlation-id'] || 'n/a'})`);
+                } catch (e4) {
+                    console.log(`   ❌ Path pair key lookup failed: ${e4.response?.status || e4.message} (x-correlation-id: ${e4.response?.headers?.['x-correlation-id'] || 'n/a'})`);
+                }
+            }
+
+            if (detail) {
+                console.log(`   id: ${detail?.id || 'MISSING'}`);
+                console.log(`   poolId: ${detail?.poolId || 'MISSING'}`);
+                console.log(`   buildableFromAda: ${detail?.buildableFromAda}`);
+                console.log(`   buildableFromToken: ${detail?.buildableFromToken}`);
+                console.log(`   bestBid: ${detail?.bestBid}`);
+                console.log(`   bestAsk: ${detail?.bestAsk}`);
+            } else {
+                console.log(`   ❌ Pool detail failed for all accepted forms`);
             }
         }
 

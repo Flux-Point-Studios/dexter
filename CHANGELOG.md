@@ -53,6 +53,13 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 - `LiquidityPool.identifier` now uses backend's real `poolId` (from `poolId ?? id`).
 - `createAmmUnsignedHex` uses `poolId` directly without any resolution logic.
 
+## [0.0.15] - 2025-11-17
+### Added
+- `AmmBuildRequest.partnerAddress?` and pass-through in `SaturnSwapAMM.createAmmUnsignedHex` / `buildAmmSignSubmit` to support server-side fee split (1 ADA partner + 1 ADA platform) when provided.
+### Changed
+- README: documented market swap behavior (tokens returned in same tx) and `partnerAddress` usage in `ammBuildOrder`.
+- DexTransaction: `toCbor()` is more robust (falls back to `toHex`/`toCbor`/`to_cbor`) to avoid provider method mismatch.
+
 ## [0.0.13] - 2025-11-13
 ### Fixed
 - Default SaturnSwap API host updated from `api.saturnswap.xyz` to `api.saturnswap.io`.

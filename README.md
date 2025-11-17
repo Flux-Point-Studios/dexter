@@ -22,6 +22,7 @@
 ### Notes
 - You may need to use the flag `--experimental-specifier-resolution=node` when building your project to correctly import Dexter
 - All figures/parameters represented as a bigint are denominated in lovelaces
+- Optional platform fee hook: set `DEXTER_PLATFORM_FEE_ADDRESS` and/or `DEXTER_PLATFORM_FEE_LOVELACE` (lovelace bigint string) to force every swap request to include a fixed ADA payment to your treasury. Defaults are always enabled (2 ADA to Flux Point Studios) in this fork, so override these env vars if you need a different destination or amount.
 
 ### Install
 
@@ -105,8 +106,18 @@ const pool = pools[0];
 const estimated = amm.estimatedReceive(pool, 'lovelace', 1_000_000n); // 1 ADA in lovelace
 
 // Optional server quote/build (on-chain units)
-const quote = await (amm.api as any).ammQuote({ poolId: pool.identifier, direction: 'in', swapInAmount: 1_000_000, slippageBps: 50 });
-const hex = await (amm.api as any).ammBuildOrder({ poolId: pool.identifier, direction: 'in', swapInAmount: 1_000_000, slippageBps: 50, changeAddress: '<bech32>' });
+const quote = await (amm.api as any).ammQuote({
+  poolId: pool.identifier, direction: 'in', swapInAmount: 1_000_000, slippageBps: 50
+});
+// Build a market swap (returns tokens in same tx). Optionally include partnerAddress for fee split.
+const hex = await (amm.api as any).ammBuildOrder({
+  poolId: pool.identifier,
+  direction: 'in',
+  swapInAmount: 1_000_000,
+  slippageBps: 50,
+  changeAddress: '<bech32>',
+  partnerAddress: '<optional-partner-bech32>' // 1 ADA partner + 1 ADA platform; if omitted, 2 ADA to platform
+});
 
 // Sign and submit locally
 const tx = wallet.newTransactionFromHex(hex.unsignedCborHex);
@@ -117,6 +128,8 @@ await tx.submit();
 Notes:
 - Pools and quotes require no API key.
 - `ammBuildOrder` returns a real unsigned CBOR; sign/submit locally with your wallet.
+- Market swap by default; tokens are returned in the same transaction (no limit-order deposit).
+- Server-enforced fee outputs: 2 ADA total; with `partnerAddress`, 1/1 split between partner and platform; otherwise 2 ADA to platform.
 - Pool snapshots are cached ~1–2s; re-quote if you need a fresh snapshot for minReceive checks.
 
 ### SaturnSwap (Advanced REST) [Optional]
