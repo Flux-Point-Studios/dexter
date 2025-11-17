@@ -60,6 +60,10 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 - README: documented market swap behavior (tokens returned in same tx) and `partnerAddress` usage in `ammBuildOrder`.
 - DexTransaction: `toCbor()` is more robust (falls back to `toHex`/`toCbor`/`to_cbor`) to avoid provider method mismatch.
 
+## [0.0.16] - 2025-11-17
+### Changed
+- Publish patch with README/partnerAddress docs and AMM typings.
+
 ## [0.0.13] - 2025-11-13
 ### Fixed
 - Default SaturnSwap API host updated from `api.saturnswap.xyz` to `api.saturnswap.io`.
