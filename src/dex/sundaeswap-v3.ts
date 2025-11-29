@@ -9,7 +9,7 @@ import { AddressType, DatumParameterKey } from '@app/constants';
 import pool from '@dex/definitions/sundaeswap-v3/pool';
 import order from '@dex/definitions/sundaeswap-v3/order';
 import { BaseApi } from '@dex/api/base-api';
-import { AddressDetails, credentialToAddress, getAddressDetails, Script } from 'lucid-cardano';
+import { AddressDetails, credentialToAddress, getAddressDetails, Script } from '@lucid-evolution/lucid';
 import { SundaeSwapV3Api } from '@dex/api/sundaeswap-v3-api';
 import { BaseWalletProvider } from '@providers/wallet/base-wallet-provider';
 

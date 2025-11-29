@@ -19,7 +19,7 @@ import { DefinitionBuilder } from '@app/definition-builder';
 import order from '@dex/definitions/wingriders-v2/order';
 import { BaseApi } from '@dex/api/base-api';
 import pool from "@dex/definitions/wingriders-v2/pool";
-import { Script } from 'lucid-cardano';
+import { Script } from '@lucid-evolution/lucid';
 
 /**
  * WingRiders constants.

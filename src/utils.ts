@@ -2,6 +2,8 @@ import { Token } from '@dex/models/asset';
 import { LiquidityPool } from '@dex/models/liquidity-pool';
 import { encoder } from 'js-encoding-utils';
 
+// Re-export logger for external use
+export { logger } from './utils/logger';
 
 export function tokensMatch(tokenA: Token, tokenB: Token): boolean {
     const tokenAId: string = tokenA === 'lovelace' ? 'lovelace' : tokenA.identifier();

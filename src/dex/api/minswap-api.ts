@@ -7,6 +7,7 @@ import { RequestConfig } from '@app/types';
 import AES from 'crypto-js/aes';
 import Utf8 from 'crypto-js/enc-utf8';
 import { appendSlash } from '@app/utils';
+import { logger } from '@app/utils/logger';
 
 const AES_KEY: string = '22eaca439bfd89cf125827a7a33fe3970d735dbfd5d84f19dd95820781fc47be';
 
@@ -31,7 +32,15 @@ export class MinswapApi extends BaseApi {
         // Small optimization for providing both tokens
         if (assetA && assetB) {
             return this.poolsByPair(assetA, assetB)
-                .then((pool: LiquidityPool) => [pool]);
+                .then((pool: LiquidityPool | undefined) => pool ? [pool] : [])
+                .catch((e: any) => {
+                    logger.error('[MinswapApi] poolsByPair failed', {
+                        error: e?.message || String(e),
+                        assetA: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                        assetB: assetB === 'lovelace' ? 'ADA' : (assetB as Asset).identifier?.(),
+                    });
+                    return [];
+                });
         }
 
         const maxPerPage: number = 20;
@@ -81,26 +90,70 @@ export class MinswapApi extends BaseApi {
                     offset: page * maxPerPage,
                 },
             }).then((response: any) => {
-                response = JSON.parse(this.decryptResponse(response.data.data.encryptedData));
+                try {
+                    // Validate response structure before decryption
+                    if (!response?.data?.data?.encryptedData) {
+                        logger.warn('[MinswapApi] PoolsByAsset response missing encryptedData', {
+                            asset: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                            responseKeys: response?.data ? Object.keys(response.data) : [],
+                            dataKeys: response?.data?.data ? Object.keys(response.data.data) : [],
+                        });
+                        return [];
+                    }
 
-                const pools = response.poolsByAsset;
+                    const decrypted = JSON.parse(this.decryptResponse(response.data.data.encryptedData));
+                    const pools = Array.isArray(decrypted?.poolsByAsset) ? decrypted.poolsByAsset : [];
 
-                const liquidityPools = pools.map((pool: any) => this.liquidityPoolFromResponse(pool));
+                    if (!pools.length) {
+                        logger.debug('[MinswapApi] poolsByAsset empty or missing', {
+                            asset: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                            page,
+                        });
+                        return [];
+                    }
 
-                if (pools.length < maxPerPage) {
-                    return liquidityPools;
+                    const liquidityPools = pools
+                        .map((pool: any) => {
+                            try {
+                                return this.liquidityPoolFromResponse(pool);
+                            } catch (mapErr: any) {
+                                logger.warn('[MinswapApi] Failed to map pool response', {
+                                    error: mapErr?.message || String(mapErr),
+                                });
+                                return undefined;
+                            }
+                        })
+                        .filter((p: LiquidityPool | undefined): p is LiquidityPool => p !== undefined);
+
+                    if (pools.length < maxPerPage) {
+                        return liquidityPools;
+                    }
+
+                    return getPaginatedResponse(page + 1).then((nextPagePools: LiquidityPool[]) => {
+                        return liquidityPools.concat(nextPagePools);
+                    });
+                } catch (e: any) {
+                    logger.error('[MinswapApi] Failed to parse poolsByAsset response', {
+                        error: e?.message || String(e),
+                        asset: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                        page,
+                    });
+                    return [];
                 }
-
-                return getPaginatedResponse(page + 1).then((nextPagePools: LiquidityPool[]) => {
-                    return liquidityPools.concat(nextPagePools);
+            }).catch((e: any) => {
+                logger.error('[MinswapApi] poolsByAsset request failed', {
+                    error: e?.message || String(e),
+                    asset: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                    page,
                 });
+                return [];
             });
         };
 
         return getPaginatedResponse(0);
     }
 
-    private poolsByPair(assetA: Token, assetB: Token): Promise<LiquidityPool> {
+    private poolsByPair(assetA: Token, assetB: Token): Promise<LiquidityPool | undefined> {
         return this.api.post('', {
             operationName: 'PoolByPair',
             query: `
@@ -153,9 +206,38 @@ export class MinswapApi extends BaseApi {
                 },
             },
         }).then((response: any) => {
-            response = JSON.parse(this.decryptResponse(response.data.data.encryptedData));
+            try {
+                // Validate response structure before decryption
+                if (!response?.data?.data?.encryptedData) {
+                    logger.warn('[MinswapApi] PoolByPair response missing encryptedData', {
+                        assetA: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                        assetB: assetB === 'lovelace' ? 'ADA' : (assetB as Asset).identifier?.(),
+                        responseKeys: response?.data ? Object.keys(response.data) : [],
+                        dataKeys: response?.data?.data ? Object.keys(response.data.data) : [],
+                    });
+                    return undefined;
+                }
 
-            return this.liquidityPoolFromResponse(response.poolByPair)
+                const decrypted = JSON.parse(this.decryptResponse(response.data.data.encryptedData));
+
+                if (!decrypted?.poolByPair) {
+                    logger.warn('[MinswapApi] poolByPair missing in decrypted response', {
+                        assetA: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                        assetB: assetB === 'lovelace' ? 'ADA' : (assetB as Asset).identifier?.(),
+                        decryptedKeys: decrypted ? Object.keys(decrypted) : [],
+                    });
+                    return undefined;
+                }
+
+                return this.liquidityPoolFromResponse(decrypted.poolByPair);
+            } catch (e: any) {
+                logger.error('[MinswapApi] Failed to parse poolByPair response', {
+                    error: e?.message || String(e),
+                    assetA: assetA === 'lovelace' ? 'ADA' : (assetA as Asset).identifier?.(),
+                    assetB: assetB === 'lovelace' ? 'ADA' : (assetB as Asset).identifier?.(),
+                });
+                return undefined;
+            }
         });
     }
 

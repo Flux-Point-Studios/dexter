@@ -4,6 +4,7 @@
     "": {
       "name": "@saibdev/dexter",
       "dependencies": {
+        "@lucid-evolution/lucid": "^0.4.29",
         "@types/blake2b": "^2.1.3",
         "@types/crypto-js": "^4.2.2",
         "axios": "^1.12.2",
@@ -14,7 +15,6 @@
         "int64-buffer": "^1.1.0",
         "js-encoding-utils": "^0.7.3",
         "lodash": "^4.17.21",
-        "lucid-cardano": "npm:@lucid-evolution/lucid@^0.4.29",
       },
       "devDependencies": {
         "@types/lodash": "^4.17.20",
@@ -107,6 +107,8 @@
     "@lucid-evolution/core-utils": ["@lucid-evolution/core-utils@0.1.16", "", { "dependencies": { "@anastasia-labs/cardano-multiplatform-lib-browser": "6.0.2-2", "@anastasia-labs/cardano-multiplatform-lib-nodejs": "6.0.2-2" } }, "sha512-fNKZiGl1h6tf48bji067uxHZpDlhkrIDrwhZLt5DQC/c6GVdZb4TSvqgs7MOmMqp1dj9dy6NDYWnCHeTqZAhJw=="],
 
     "@lucid-evolution/crc8": ["@lucid-evolution/crc8@0.1.8", "", {}, "sha512-88+/S6n+sPgxYtG05rvbJDVb8MoFGzckkR3p26uGrzngYzlJGfxBWIzNhVwfI2mgINPo2C5lkZW3GYnfY0MjuA=="],
+
+    "@lucid-evolution/lucid": ["@lucid-evolution/lucid@0.4.29", "", { "dependencies": { "@anastasia-labs/cardano-multiplatform-lib-browser": "6.0.2-3", "@anastasia-labs/cardano-multiplatform-lib-nodejs": "6.0.2-3", "@effect/schema": "^0.66.16", "@emurgo/cardano-message-signing-nodejs": "^1.1.0", "@lucid-evolution/core-types": "0.1.22", "@lucid-evolution/core-utils": "0.1.16", "@lucid-evolution/plutus": "0.1.29", "@lucid-evolution/provider": "0.1.90", "@lucid-evolution/sign_data": "0.1.25", "@lucid-evolution/uplc": "0.2.20", "@lucid-evolution/utils": "0.1.66", "@lucid-evolution/wallet": "0.1.72", "effect": "^3.12.7" } }, "sha512-+9pXlHivIGE4xJC6EZ62vtOBfgHgPpbJHgd7d6Ztk3lmbBwsM1PZVQ1WSE2upXSvqGE8KT/99IxmZ3kKfbtDUg=="],
 
     "@lucid-evolution/plutus": ["@lucid-evolution/plutus@0.1.29", "", { "dependencies": { "@anastasia-labs/cardano-multiplatform-lib-browser": "6.0.2-3", "@anastasia-labs/cardano-multiplatform-lib-nodejs": "6.0.2-3", "@lucid-evolution/core-types": "0.1.22", "@lucid-evolution/core-utils": "0.1.16", "@sinclair/typebox": "^0.32.28" } }, "sha512-GHmq9Pso+xeFszwKAd9jvRFnmnV4fRKdm+OHYLrS58yh3uazKr9VR+amtT9SmKufoLy/gNo5sL7i6gcNSW+yIg=="],
 
@@ -349,8 +351,6 @@
     "libsodium-wrappers-sumo": ["libsodium-wrappers-sumo@0.7.15", "", { "dependencies": { "libsodium-sumo": "^0.7.15" } }, "sha512-aSWY8wKDZh5TC7rMvEdTHoyppVq/1dTSAeAR7H6pzd6QRT3vQWcT5pGwCotLcpPEOLXX6VvqihSPkpEhYAjANA=="],
 
     "lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="],
-
-    "lucid-cardano": ["@lucid-evolution/lucid@0.4.29", "", { "dependencies": { "@anastasia-labs/cardano-multiplatform-lib-browser": "6.0.2-3", "@anastasia-labs/cardano-multiplatform-lib-nodejs": "6.0.2-3", "@effect/schema": "^0.66.16", "@emurgo/cardano-message-signing-nodejs": "^1.1.0", "@lucid-evolution/core-types": "0.1.22", "@lucid-evolution/core-utils": "0.1.16", "@lucid-evolution/plutus": "0.1.29", "@lucid-evolution/provider": "0.1.90", "@lucid-evolution/sign_data": "0.1.25", "@lucid-evolution/uplc": "0.2.20", "@lucid-evolution/utils": "0.1.66", "@lucid-evolution/wallet": "0.1.72", "effect": "^3.12.7" } }, "sha512-+9pXlHivIGE4xJC6EZ62vtOBfgHgPpbJHgd7d6Ztk3lmbBwsM1PZVQ1WSE2upXSvqGE8KT/99IxmZ3kKfbtDUg=="],
 
     "make-error": ["make-error@1.3.6", "", {}, "sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw=="],
 

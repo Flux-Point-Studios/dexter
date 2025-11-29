@@ -17,12 +17,72 @@
 - Submit split swap orders across multple DEXs
 - Build your own data, wallet, or asset metadata providers to plug into Dexter
 - Build swap datums given specific parameters using Dexters _Definition Builder_
-- Load wallets using a seedphrase or CIP-30 interface using [Lucid](https://github.com/spacebudz/lucid)
+- Load wallets using a seedphrase or CIP-30 interface using [@lucid-evolution/lucid](https://github.com/lucid-evolution/lucid)
+
+### CSWAP (Hybrid AMM Orderbook)
+- On-chain pool discovery via CSWAP Dex Pool address (ADA pairs only).
+- Fee model:
+  - Pool fee from pool datum `lp_fee_10k` (e.g., 85 → 0.85%).
+  - Batcher fee: 690,000 lovelace.
+  - Per-order min deposit: 2,000,000 lovelace (returned upon fill/cancel).
+  - Platform fee per 10k: 15 (applied to target min output in datum).
+
+```ts
+import { Dexter, CSwap, BlockfrostProvider, LucidProvider } from '@fluxpointstudios/dexter';
+
+const dexter = new Dexter();
+const wallet = new LucidProvider();
+await wallet.loadWalletFromSeedPhrase(
+  ['...seed words...'],
+  { accountIndex: 0 },
+  { url: 'https://cardano-mainnet.blockfrost.io/api/v0', projectId: '<BLOCKFROST_PROJECT_ID>' }
+);
+dexter.withWalletProvider(wallet);
+
+const data = new BlockfrostProvider(
+  { url: 'https://cardano-mainnet.blockfrost.io/api/v0', projectId: '<BLOCKFROST_PROJECT_ID>' }
+);
+dexter.withDataProvider(data);
+
+const cswap = dexter.dexByName(CSwap.identifier) as CSwap;
+const pools = await cswap.liquidityPools(data);
+const pool = pools.find(p => p.assetA === 'lovelace') || pools[0];
+
+const tx = await dexter.newSwapRequest()
+  .forLiquidityPool(pool)
+  .withSwapInToken('lovelace')
+  .withSwapInAmount(2_000_000n)   // 2 ADA
+  .withSlippagePercent(0.5)
+  .complete();
+
+// sign and submit as needed:
+// await tx.sign(); const hash = await tx.submit();
+```
+
+#### CSWAP Pricing helpers
+This is the AMM pool’s implied price. Orderbook best bid/ask could differ; we can extend to read order UTxOs at the orderbook address to synthesize a live spread if needed.
+
+```ts
+import { getAmmImpliedPrice, getOrderbookTopOfBook, Asset } from '@fluxpointstudios/dexter';
+
+// AMM-implied (from pool reserves)
+const pools = await dexter.newFetchRequest()
+  .onDexs(CSwap.identifier)
+  .getLiquidityPools();
+const pool = pools.find(p => p.assetA === 'lovelace')!;
+const { adaPerToken, tokenPerAda } = getAmmImpliedPrice(pool);
+
+// Orderbook top-of-book (best bid/ask)
+const token = Asset.fromIdentifier('<policyId><assetNameHex>');
+const top = await getOrderbookTopOfBook(dexter.dataProvider!, token.identifier());
+console.log({ adaPerToken, tokenPerAda, top });
+```
 
 ### Notes
 - You may need to use the flag `--experimental-specifier-resolution=node` when building your project to correctly import Dexter
 - All figures/parameters represented as a bigint are denominated in lovelaces
 - Optional platform fee hook: set `DEXTER_PLATFORM_FEE_ADDRESS` and/or `DEXTER_PLATFORM_FEE_LOVELACE` (lovelace bigint string) to force every swap request to include a fixed ADA payment to your treasury. Defaults are always enabled (2 ADA to Flux Point Studios) in this fork, so override these env vars if you need a different destination or amount.
+- **Blockfrost Proxy Support**: Dexter now supports proxy-based Blockfrost configuration via environment variables. Set `BLOCKFROST_PROXY_URL` and `BLOCKFROST_PROXY_PROJECT_ID` to use your proxy endpoint. If not set, it falls back to direct Blockfrost credentials (`BLOCKFROST_URL` and `BLOCKFROST_PROJECT_ID`). This is particularly useful for production deployments with centralized API management.
 
 ### Install
 
@@ -126,9 +186,8 @@ await tx.submit();
 ```
 
 Notes:
-- Pools and quotes require no API key.
-- `ammBuildOrder` returns a real unsigned CBOR; sign/submit locally with your wallet.
-- Market swap by default; tokens are returned in the same transaction (no limit-order deposit).
+- `ammBuildOrder` returns unsigned CBOR; sign/submit locally with your wallet.
+- Spot Market swap by default.
 - Server-enforced fee outputs: 2 ADA total; with `partnerAddress`, 1/1 split between partner and platform; otherwise 2 ADA to platform.
 - Pool snapshots are cached ~1–2s; re-quote if you need a fresh snapshot for minReceive checks.
 
@@ -136,7 +195,7 @@ Notes:
 
 ```js
 // Configure env (example). You can also set process.env at runtime.
-// SATURN_API_BASE_URL=https://api.saturnswap.xyz
+// SATURN_API_BASE_URL=https://api.saturnswap.io
 // SATURN_API_KEY=your-api-key-or-bearer-token
 
 // Enable the CLOB provider when constructing Dexter
@@ -193,7 +252,7 @@ if (hex) {
 ```
 
 Environment variables:
-- `SATURN_API_BASE_URL` (e.g., `https://api.saturnswap.xyz`)
+- `SATURN_API_BASE_URL` (e.g., `https://api.saturnswap.io`)
 - `SATURN_API_KEY` or `SATURN_API_TOKEN` (will be sent as `Authorization: Bearer <value>`)
 
 #### SaturnSwap by-asset inputs at a glance
@@ -272,7 +331,13 @@ dexter.withDataProvider(provider)
 <summary><code>withWalletProvider(BaseWalletProvider): Dexter</code> Set who Dexter sends wallet requests to.</summary>
 
 At this time, Dexter only supplies a Mock wallet provider & a [Lucid provider](./docs/providers/wallet.md). Behind the scenes,
-the lucid provider leverages [Lucid](https://github.com/spacebudz/lucid) to manage your wallet & create transactions.
+the lucid provider leverages [@lucid-evolution/lucid](https://github.com/lucid-evolution/lucid) to manage your wallet & create transactions.
+
+**Blockfrost Configuration**: The `LucidProvider` automatically resolves Blockfrost configuration from environment variables:
+- **Proxy mode** (preferred for production): Set `BLOCKFROST_PROXY_URL` and `BLOCKFROST_PROXY_PROJECT_ID` environment variables
+- **Direct mode**: Set `BLOCKFROST_URL` (optional, defaults to mainnet) and `BLOCKFROST_PROJECT_ID` environment variables
+
+You can still pass explicit `BlockfrostConfig` objects, but if omitted, the provider will use the environment-based resolution.
 
 ##### Using
 

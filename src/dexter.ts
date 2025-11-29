@@ -22,6 +22,7 @@ import { WingRidersV2 } from '@dex/wingriders-v2';
 import { Splash } from '@dex/splash';
 import { SaturnSwap } from '@dex/saturnswap';
 import { SaturnSwapAMM } from '@dex/saturnswap-amm';
+import { CSwap } from '@dex/cswap';
 
 export class Dexter {
 
@@ -72,6 +73,7 @@ export class Dexter {
             [VyFinance.identifier]: new VyFinance(this.requestConfig),
             [Splash.identifier]: new Splash(this.requestConfig),
             [SaturnSwapAMM.identifier]: new SaturnSwapAMM(this.requestConfig),
+            [CSwap.identifier]: new CSwap(this.requestConfig),
         };
         if (this.config.enableSaturnClob) {
             this.availableDexs[SaturnSwap.identifier] = new SaturnSwap(this.requestConfig);

@@ -5,6 +5,7 @@ import axios, { AxiosInstance } from 'axios';
 import { SundaeSwapV1 } from '../sundaeswap-v1';
 import { RequestConfig } from '@app/types';
 import { appendSlash } from '@app/utils';
+import { logger } from '@app/utils/logger';
 
 export class SundaeSwapV1Api extends BaseApi {
 
@@ -72,38 +73,89 @@ export class SundaeSwapV1Api extends BaseApi {
                     assetIds: [assetBId !== '' ? assetBId : assetAId],
                 },
             }).then((response: any) => {
-                const pools = response.data.data.pools;
-                const liquidityPools = pools.map((pool: any) => {
-                    let liquidityPool: LiquidityPool = new LiquidityPool(
-                        SundaeSwapV1.identifier,
-                        pool.assetA.assetId
-                            ? Asset.fromIdentifier(pool.assetA.assetId, pool.assetA.decimals)
-                            : 'lovelace',
-                        pool.assetB.assetId
-                            ? Asset.fromIdentifier(pool.assetB.assetId, pool.assetB.decimals)
-                            : 'lovelace',
-                        BigInt(pool.quantityA),
-                        BigInt(pool.quantityB),
-                        this.dex.poolAddress,
-                        this.dex.orderAddress,
-                        this.dex.orderAddress,
-                    );
+                try {
+                    const pools = response?.data?.data?.pools;
 
-                    liquidityPool.identifier = pool.ident;
-                    liquidityPool.lpToken = Asset.fromIdentifier(pool.assetLP.assetId);
-                    liquidityPool.poolFeePercent = Number(pool.fee);
-                    liquidityPool.totalLpTokens = BigInt(pool.quantityLP);
+                    if (!Array.isArray(pools)) {
+                        logger.warn('[SundaeSwapV1Api] pools not an array or missing', {
+                            responseKeys: response?.data ? Object.keys(response.data) : [],
+                            dataKeys: response?.data?.data ? Object.keys(response.data.data) : [],
+                            poolsType: typeof pools,
+                            page,
+                        });
+                        return [];
+                    }
 
-                    return liquidityPool;
-                });
+                    if (!pools.length) {
+                        logger.debug('[SundaeSwapV1Api] pools empty', { page });
+                        return [];
+                    }
 
-                if (pools.length < maxPerPage) {
-                    return liquidityPools;
+                    const liquidityPools = pools
+                        .map((pool: any) => {
+                            try {
+                                // Validate required fields
+                                if (!pool?.assetA || !pool?.assetB || !pool?.assetLP) {
+                                    logger.debug('[SundaeSwapV1Api] Pool missing required fields', {
+                                        hasAssetA: !!pool?.assetA,
+                                        hasAssetB: !!pool?.assetB,
+                                        hasAssetLP: !!pool?.assetLP,
+                                    });
+                                    return undefined;
+                                }
+
+                                let liquidityPool: LiquidityPool = new LiquidityPool(
+                                    SundaeSwapV1.identifier,
+                                    pool.assetA.assetId
+                                        ? Asset.fromIdentifier(pool.assetA.assetId, pool.assetA.decimals)
+                                        : 'lovelace',
+                                    pool.assetB.assetId
+                                        ? Asset.fromIdentifier(pool.assetB.assetId, pool.assetB.decimals)
+                                        : 'lovelace',
+                                    BigInt(pool.quantityA ?? 0),
+                                    BigInt(pool.quantityB ?? 0),
+                                    this.dex.poolAddress,
+                                    this.dex.orderAddress,
+                                    this.dex.orderAddress,
+                                );
+
+                                liquidityPool.identifier = pool.ident ?? '';
+                                liquidityPool.lpToken = pool.assetLP.assetId
+                                    ? Asset.fromIdentifier(pool.assetLP.assetId)
+                                    : new Asset('', '');
+                                liquidityPool.poolFeePercent = Number(pool.fee ?? 0);
+                                liquidityPool.totalLpTokens = BigInt(pool.quantityLP ?? 0);
+
+                                return liquidityPool;
+                            } catch (mapErr: any) {
+                                logger.warn('[SundaeSwapV1Api] Failed to map pool response', {
+                                    error: mapErr?.message || String(mapErr),
+                                });
+                                return undefined;
+                            }
+                        })
+                        .filter((p: LiquidityPool | undefined): p is LiquidityPool => p !== undefined);
+
+                    if (pools.length < maxPerPage) {
+                        return liquidityPools;
+                    }
+
+                    return getPaginatedResponse(page + 1).then((nextPagePools: LiquidityPool[]) => {
+                        return liquidityPools.concat(nextPagePools);
+                    });
+                } catch (e: any) {
+                    logger.error('[SundaeSwapV1Api] Error parsing pools response', {
+                        error: e?.message || String(e),
+                        page,
+                    });
+                    return [];
                 }
-
-                return getPaginatedResponse(page + 1).then((nextPagePools: LiquidityPool[]) => {
-                    return liquidityPools.concat(nextPagePools);
+            }).catch((e: any) => {
+                logger.error('[SundaeSwapV1Api] pools request failed', {
+                    error: e?.message || String(e),
+                    page,
                 });
+                return [];
             });
         };
 

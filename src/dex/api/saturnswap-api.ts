@@ -5,6 +5,7 @@ import axios, { AxiosInstance } from 'axios';
 import { SaturnSwap } from '../saturnswap';
 import { RequestConfig } from '@app/types';
 import { appendSlash } from '@app/utils';
+import { logger } from '@app/utils/logger';
 
 /**
  * SaturnSwap API implementation (REST)
@@ -54,21 +55,35 @@ export class SaturnSwapApi extends BaseApi {
     // ===== Public REST methods =====
 
     async assets(): Promise<AggregatorAssetDTO[]> {
-        const { data } = await this.api.get<AggregatorAssetsResponseDTO>('/v1/aggregator/assets');
-        return data.assets ?? [];
+        try {
+            const { data } = await this.api.get<AggregatorAssetsResponseDTO>('/v1/aggregator/assets');
+            return data?.assets ?? [];
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] assets request failed', {
+                error: e?.message || String(e),
+            });
+            return [];
+        }
     }
 
     async orderbook(assetA: Token, assetB: Token): Promise<AggregatorOrderbookResponseDTO> {
-        const params: Record<string, string> = {};
-        if (assetA !== 'lovelace') {
-            const a = assetA as Asset;
-            params.asset = `${a.policyId}.${a.assetName}`;
-        } else {
-            params.asset = '';
+        try {
+            const params: Record<string, string> = {};
+            if (assetA !== 'lovelace') {
+                const a = assetA as Asset;
+                params.asset = `${a.policyId}.${a.assetName}`;
+            } else {
+                params.asset = '';
+            }
+            params.address = this.dex.orderAddress;
+            const { data } = await this.api.get<AggregatorOrderbookResponseDTO>('/v1/aggregator/orderbook', { params });
+            return data ?? { asks: [], bids: [] };
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] orderbook request failed', {
+                error: e?.message || String(e),
+            });
+            return { asks: [], bids: [] };
         }
-        params.address = this.dex.orderAddress;
-        const { data } = await this.api.get<AggregatorOrderbookResponseDTO>('/v1/aggregator/orderbook', { params });
-        return data;
     }
 
     async createOrderTransactionSimple(input: SimpleCreateInputDTO): Promise<SimpleCreatePayloadDTO> {
@@ -99,61 +114,105 @@ export class SaturnSwapApi extends BaseApi {
 
     // ===== AMM facade (new) =====
     async getAmmPools(): Promise<AmmPoolDTO[]> {
-        const { data } = await this.api.get<AmmPoolDTO[] | AmmPoolsResponse>('/v1/aggregator/pools');
-        // Backend returns array directly, not wrapped in { pools: [...] }
-        return Array.isArray(data) ? data : (data?.pools ?? []);
+        try {
+            const { data } = await this.api.get<AmmPoolDTO[] | AmmPoolsResponse>('/v1/aggregator/pools');
+            // Backend returns array directly, not wrapped in { pools: [...] }
+            return Array.isArray(data) ? data : (data?.pools ?? []);
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] getAmmPools request failed', {
+                error: e?.message || String(e),
+            });
+            return [];
+        }
     }
 
     async getAmmPoolById(poolId: string): Promise<AmmPoolById | undefined> {
-        // Prefer canonical UUID in poolId; fall back to legacy pair key via id
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(poolId);
-        const params: any = isUuid ? { poolId } : { id: poolId };
-        const { data } = await this.api.get<AmmPoolById>('/v1/aggregator/pools/by-pool', { params });
-        // Normalize buildability flags for backwards compatibility
-        if (!data.buildable && (data.buildableFromAda !== undefined || data.buildableFromToken !== undefined)) {
-            (data as any).buildable = {
-                marketBuyFromAda: data.buildableFromAda,
-                marketSellToAda: data.buildableFromToken,
-            };
+        try {
+            // Prefer canonical UUID in poolId; fall back to legacy pair key via id
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(poolId);
+            const params: any = isUuid ? { poolId } : { id: poolId };
+            const { data } = await this.api.get<AmmPoolById>('/v1/aggregator/pools/by-pool', { params });
+            
+            if (!data) {
+                logger.warn('[SaturnSwapApi] getAmmPoolById returned empty data', { poolId });
+                return undefined;
+            }
+            
+            // Normalize buildability flags for backwards compatibility
+            if (!data.buildable && (data.buildableFromAda !== undefined || data.buildableFromToken !== undefined)) {
+                (data as any).buildable = {
+                    marketBuyFromAda: data.buildableFromAda,
+                    marketSellToAda: data.buildableFromToken,
+                };
+            }
+            return data;
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] getAmmPoolById request failed', {
+                error: e?.message || String(e),
+                poolId,
+            });
+            return undefined;
         }
-        return data;
     }
 
     async ammQuote(req: AmmQuoteRequest): Promise<AmmQuoteResponse> {
-        const { data } = await this.api.post<AmmQuoteResponse>('/v1/aggregator/amm/quote', req);
-        return data;
+        try {
+            const { data } = await this.api.post<AmmQuoteResponse>('/v1/aggregator/amm/quote', req);
+            return data ?? {};
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] ammQuote request failed', {
+                error: e?.message || String(e),
+                poolId: req.poolId,
+            });
+            return {};
+        }
     }
 
     async ammBuildOrder(req: AmmBuildRequest): Promise<AmmBuildResponse> {
-        const { data } = await this.api.post<AmmBuildResponse>('/v1/aggregator/amm/build-order', req);
-        return data;
+        try {
+            const { data } = await this.api.post<AmmBuildResponse>('/v1/aggregator/amm/build-order', req);
+            return data;
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] ammBuildOrder request failed', {
+                error: e?.message || String(e),
+                poolId: req.poolId,
+            });
+            throw e; // Re-throw for build errors - caller needs to handle
+        }
     }
 
     // ===== Dexter compatibility: fabricate a minimal pool from orderbook =====
     async liquidityPools(assetA?: Token, assetB?: Token): Promise<LiquidityPool[]> {
         if (!assetA || !assetB) return [];
 
-        const ob = await this.orderbook(assetA, assetB);
+        try {
+            const ob = await this.orderbook(assetA, assetB);
 
-        const reserveA = this.approximateReserveFor(assetA, ob.asks, ob.bids);
-        const reserveB = this.approximateReserveFor(assetB, ob.asks, ob.bids);
+            const reserveA = this.approximateReserveFor(assetA, ob.asks, ob.bids);
+            const reserveB = this.approximateReserveFor(assetB, ob.asks, ob.bids);
 
-        const pool = new LiquidityPool(
-            SaturnSwap.identifier,
-            assetA,
-            assetB,
-            reserveA,
-            reserveB,
-            this.dex.poolAddress,
-            this.dex.orderAddress,
-            this.dex.orderAddress,
-        );
+            const pool = new LiquidityPool(
+                SaturnSwap.identifier,
+                assetA,
+                assetB,
+                reserveA,
+                reserveB,
+                this.dex.poolAddress,
+                this.dex.orderAddress,
+                this.dex.orderAddress,
+            );
 
-        pool.poolFeePercent = 0.3;
-        pool.identifier = `${this.dex.orderAddress}:${this.assetKey(assetA)}-${this.assetKey(assetB)}`;
-        pool.extra = { orderbook: { asks: ob.asks ?? [], bids: ob.bids ?? [] } };
+            pool.poolFeePercent = 0.3;
+            pool.identifier = `${this.dex.orderAddress}:${this.assetKey(assetA)}-${this.assetKey(assetB)}`;
+            pool.extra = { orderbook: { asks: ob.asks ?? [], bids: ob.bids ?? [] } };
 
-        return [pool];
+            return [pool];
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] liquidityPools failed', {
+                error: e?.message || String(e),
+            });
+            return [];
+        }
     }
 
     // ===== Internals =====

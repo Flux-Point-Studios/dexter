@@ -18,7 +18,7 @@ import { BaseApi } from '@dex/api/base-api';
 import pool from '@dex/definitions/splash/pool';
 import order from '@dex/definitions/splash/order';
 import { bytesToHex, correspondingReserves, hexToBytes, tokensMatch } from '@app/utils';
-import { AddressDetails, credentialToAddress, getAddressDetails, Script } from 'lucid-cardano';
+import { AddressDetails, credentialToAddress, getAddressDetails, Script } from '@lucid-evolution/lucid';
 import { Uint64BE } from 'int64-buffer';
 import blake2b from 'blake2b';
 import { SplashApi } from '@dex/api/splash-api';

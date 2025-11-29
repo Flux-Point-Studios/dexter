@@ -4,6 +4,7 @@
 export * from './constants';
 export * from './types';
 export * from './utils';
+export * from './utils/logger';
 export * from './dexter';
 export * from './definition-builder';
 
@@ -42,6 +43,7 @@ export * from './dex/base-dex';
 export * from './dex/minswap';
 export * from './dex/saturnswap';
 export * from './dex/saturnswap-amm';
+export * from './dex/cswap';
 export * from './dex/minswap-v2';
 export * from './dex/sundaeswap-v1';
 export * from './dex/sundaeswap-v3';
@@ -50,3 +52,8 @@ export * from './dex/wingriders';
 export * from './dex/wingriders-v2';
 export * from './dex/vyfinance';
 export * from './dex/splash';
+
+/**
+ * Pricing helpers
+ */
+export * from './pricing/cswap-pricing';

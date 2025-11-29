@@ -1,4 +1,4 @@
-import { Data } from 'lucid-cardano';
+import { Data } from '@lucid-evolution/lucid';
 
 /**
  * Decode SaturnSwap's SwapDatum

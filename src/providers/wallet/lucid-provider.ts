@@ -23,8 +23,9 @@ import {
     TxSignBuilder,
     TxSigned,
     Unit
-} from 'lucid-cardano';
+} from '@lucid-evolution/lucid';
 import { AddressType } from '@app/constants';
+import { resolveBlockfrostConfigFromOptsOrEnv } from '@app/config/blockfrost';
 
 export class LucidProvider extends BaseWalletProvider {
 
@@ -240,18 +241,18 @@ export class LucidProvider extends BaseWalletProvider {
     }
 
     private loadLucid(config: BlockfrostConfig | KupmiosConfig): Promise<LucidEvolution> {
-        return Lucid(
-            'kupoUrl' in config
-                ? new Kupmios(
-                    config.kupoUrl,
-                    config.ogmiosUrl
-                )
-                : new Blockfrost(
-                    config.url,
-                    config.projectId
-                ),
+        if ('kupoUrl' in config) {
+            return Lucid(
+                new Kupmios(config.kupoUrl, config.ogmiosUrl),
                 "Mainnet"
+            );
+        }
+
+        const { url, projectId } = resolveBlockfrostConfigFromOptsOrEnv(
+            config as BlockfrostConfig
         );
+
+        return Lucid(new Blockfrost(url, projectId), "Mainnet");
     }
 
 }

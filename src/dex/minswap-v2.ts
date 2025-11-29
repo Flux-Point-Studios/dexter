@@ -19,7 +19,7 @@ import { AddressType, DatumParameterKey } from '@app/constants';
 import order from '@dex/definitions/minswap-v2/order';
 import { BaseApi } from '@dex/api/base-api';
 import pool from '@dex/definitions/minswap-v2/pool';
-import { AddressDetails, credentialToAddress, getAddressDetails, Script } from 'lucid-cardano';
+import { AddressDetails, credentialToAddress, getAddressDetails, Script } from '@lucid-evolution/lucid';
 
 export class MinswapV2 extends BaseDex {
 

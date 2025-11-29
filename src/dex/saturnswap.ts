@@ -24,14 +24,14 @@ import { SaturnSwapApi } from './api/saturnswap-api';
 import type { QuoteResponse } from './api/saturnswap-api';
 import { BaseWalletProvider } from '@providers/wallet/base-wallet-provider';
 import { decodeControlDatum, decodeSwapDatum } from './definitions/saturnswap/decode';
-import { Script } from 'lucid-cardano';
+import { Script } from '@lucid-evolution/lucid';
 
 /**
  * Converting Script Hashes to Addresses:
  * 
- * Using lucid-cardano:
+ * Using @lucid-evolution/lucid:
  * ```typescript
- * import { C } from 'lucid-cardano';
+ * import { C } from '@lucid-evolution/lucid';
  * 
  * const scriptHashToAddress = (scriptHash: string, isMainnet: boolean): string => {
  *   const scriptCredential = C.StakeCredential.from_scripthash(

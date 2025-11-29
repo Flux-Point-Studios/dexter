@@ -1,6 +1,6 @@
 {
   "name": "@fluxpointstudios/dexter",
-  "version": "0.0.16",
+  "version": "0.0.18",
   "license": "MIT",
   "author": {
     "name": "Clark Alesna",
@@ -37,7 +37,11 @@
     "test": "bun test",
     "prepare": "bun run build",
     "prepublishOnly": "bun test",
-    "smoke:saturn": "bun scripts/saturn-amm-cli.mjs"
+    "smoke:saturn": "bun scripts/saturn-amm-cli.mjs",
+    "smoke:dex": "bun scripts/smoke-dex-apis.mjs",
+    "smoke:dex:verbose": "bun scripts/smoke-dex-apis.mjs --verbose",
+    "smoke:integration": "bun scripts/smoke-dexter-integration.mjs",
+    "smoke": "bun run smoke:dex && bun run smoke:integration"
   },
   "dependencies": {
     "@types/blake2b": "^2.1.3",
@@ -50,7 +54,7 @@
     "int64-buffer": "^1.1.0",
     "js-encoding-utils": "^0.7.3",
     "lodash": "^4.17.21",
-    "lucid-cardano": "npm:@lucid-evolution/lucid@^0.4.29"
+    "@lucid-evolution/lucid": "^0.4.29"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.20",
