@@ -145,12 +145,14 @@ export class SplashSdk extends Splash {
         const outputAssetInfo = assetInfoFromToken(swapOutToken);
 
         const slippagePercent = this.deriveSlippagePercent(liquidityPool, swapInToken, swapInAmount, minReceive);
+        const DEFAULT_SLIPPAGE_BPS = 100; // 1% default slippage in basis points
 
         const basePrice = await this.getBasePriceQuote(
             {
                 input: inputCurrency,
                 outputAsset: outputAssetInfo,
-                slippage: slippagePercent,
+                price: undefined, // Let API calculate price
+                slippage: slippagePercent ?? DEFAULT_SLIPPAGE_BPS,
             },
         );
 

@@ -42,7 +42,13 @@ export const assetInfoFromToken = (token: Asset | 'lovelace'): AssetInfo => {
         return AssetInfo.ada;
     }
 
-    return AssetInfo.fromBase16(token.policyId, token.nameHex ?? '', {
+    const nameHex = token.nameHex ?? '';
+    const subject = `${token.policyId}${nameHex}`;
+
+    return AssetInfo.fromBase16(token.policyId, nameHex, {
+        policyId: token.policyId,
+        name: token.assetName ?? '',
+        subject,
         decimals: token.decimals,
     });
 };
