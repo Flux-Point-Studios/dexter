@@ -7,6 +7,15 @@ import { RequestConfig } from '@app/types';
 import { appendSlash } from '@app/utils';
 import { logger } from '@app/utils/logger';
 
+/**
+ * SundaeSwap V1 API adapter.
+ * 
+ * DECIMALS DISCLAIMER:
+ * Asset.decimals values populated by this adapter come from DEX metadata and are
+ * NON-AUTHORITATIVE hints only. Consumers should resolve authoritative decimals via
+ * Cardano CF token registry, on-chain metadata, or their own decimals resolver for
+ * any safety-critical calculations.
+ */
 export class SundaeSwapV1Api extends BaseApi {
 
     protected readonly api: AxiosInstance;

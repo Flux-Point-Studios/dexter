@@ -64,6 +64,16 @@ This project adheres to Semantic Versioning. Dates are in UTC.
 ### Changed
 - Publish patch with README/partnerAddress docs and AMM typings.
 
+## [0.0.18] - 2025-11-29
+### Added
+- Integrated Splash SDK dependencies (`@splashprotocol/sdk`, `core`, `api`, `cml-builder`) and exposed the new `SplashSdk` adapter.
+- `DexterConfig.enableSplashSdk` and `DexterConfig.splashSdkNetwork` flags to opt-in to the SDK-backed Splash flow.
+- Utility helpers for translating Splash `Currencies` into Dexter `AssetBalance[]`.
+- Unit test coverage for the new adapter (`tests/splash-sdk.test.ts`).
+### Changed
+- README now documents the Splash SDK adapter, config flags, and setup steps.
+- `package.json` version bumped to `0.0.18` to publish the new functionality.
+
 ## [0.0.13] - 2025-11-13
 ### Fixed
 - Default SaturnSwap API host updated from `api.saturnswap.xyz` to `api.saturnswap.io`.

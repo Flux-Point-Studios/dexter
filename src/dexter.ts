@@ -20,6 +20,7 @@ import { SundaeSwapV3 } from '@dex/sundaeswap-v3';
 import { MinswapV2 } from '@dex/minswap-v2';
 import { WingRidersV2 } from '@dex/wingriders-v2';
 import { Splash } from '@dex/splash';
+import { SplashSdk } from '@dex/splash-sdk';
 import { SaturnSwap } from '@dex/saturnswap';
 import { SaturnSwapAMM } from '@dex/saturnswap-amm';
 import { CSwap } from '@dex/cswap';
@@ -44,6 +45,8 @@ export class Dexter {
                 shouldSubmitOrders: false,
                 metadataMsgBranding: 'Dexter',
                 enableSaturnClob: false,
+                enableSplashSdk: false,
+                splashSdkNetwork: 'mainnet',
             } as DexterConfig,
             config,
         );
@@ -77,6 +80,12 @@ export class Dexter {
         };
         if (this.config.enableSaturnClob) {
             this.availableDexs[SaturnSwap.identifier] = new SaturnSwap(this.requestConfig);
+        }
+        if (this.config.enableSplashSdk) {
+            this.availableDexs[SplashSdk.identifier] = new SplashSdk(
+                this.requestConfig,
+                this.config.splashSdkNetwork === 'staging' ? 'staging' : 'mainnet',
+            );
         }
     }
 

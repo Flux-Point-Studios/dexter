@@ -10,6 +10,8 @@ export interface DexterConfig {
   shouldSubmitOrders?: boolean;
   metadataMsgBranding?: string;
   enableSaturnClob?: boolean;
+  enableSplashSdk?: boolean;
+  splashSdkNetwork?: 'mainnet' | 'staging';
 }
 
 export interface RequestConfig {

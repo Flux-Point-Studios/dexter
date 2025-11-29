@@ -9,6 +9,15 @@ import { logger } from '@app/utils/logger';
 
 const MAX_INT: bigint = 9_223_372_036_854_775_807n;
 
+/**
+ * Splash API adapter.
+ * 
+ * DECIMALS DISCLAIMER:
+ * Asset.decimals values populated by this adapter come from DEX metadata and are
+ * NON-AUTHORITATIVE hints only. Consumers should resolve authoritative decimals via
+ * Cardano CF token registry, on-chain metadata, or their own decimals resolver for
+ * any safety-critical calculations.
+ */
 export class SplashApi extends BaseApi {
 
     protected readonly api: AxiosInstance;

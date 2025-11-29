@@ -52,6 +52,7 @@ export * from './dex/wingriders';
 export * from './dex/wingriders-v2';
 export * from './dex/vyfinance';
 export * from './dex/splash';
+export * from './dex/splash-sdk';
 
 /**
  * Pricing helpers

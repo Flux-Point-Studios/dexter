@@ -84,6 +84,36 @@ console.log({ adaPerToken, tokenPerAda, top });
 - Optional platform fee hook: set `DEXTER_PLATFORM_FEE_ADDRESS` and/or `DEXTER_PLATFORM_FEE_LOVELACE` (lovelace bigint string) to force every swap request to include a fixed ADA payment to your treasury. Defaults are always enabled (2 ADA to Flux Point Studios) in this fork, so override these env vars if you need a different destination or amount.
 - **Blockfrost Proxy Support**: Dexter now supports proxy-based Blockfrost configuration via environment variables. Set `BLOCKFROST_PROXY_URL` and `BLOCKFROST_PROXY_PROJECT_ID` to use your proxy endpoint. If not set, it falls back to direct Blockfrost credentials (`BLOCKFROST_URL` and `BLOCKFROST_PROJECT_ID`). This is particularly useful for production deployments with centralized API management.
 
+### Token Decimals Resolution
+
+**Important**: `Asset.decimals` values in `@fluxpointstudios/dexter` are populated from DEX API metadata and are **NON-AUTHORITATIVE hints only**. DEX metadata can be incorrect or change without notice.
+
+For any **safety-critical calculations** (pricing, slippage, order sizing, etc.), consumers should resolve authoritative decimals via:
+- [Cardano CF Token Registry](https://github.com/cardano-foundation/cardano-token-registry)
+- On-chain metadata (CIP-25/CIP-68)
+- Your own decimals resolver service
+
+The decimals values provided by Dexter are suitable for:
+- Display/cosmetic purposes
+- Rough analytics and pool comparisons
+- Initial hints that can be overridden by your resolver
+
+They should **NOT** be trusted for:
+- Final order sizing calculations
+- Slippage enforcement
+- Risk-critical pricing logic
+
+Example pattern for consumers:
+```ts
+// Dexter provides decimals as hints
+const pool = await dexter.newFetchRequest().onDexs('Minswap').getLiquidityPools();
+const asset = pool[0].assetB as Asset;
+
+// Your app should resolve authoritative decimals
+const authoritativeDecimals = await yourDecimalsResolver.resolve(asset.identifier());
+asset.decimals = authoritativeDecimals; // Override with trusted value
+```
+
 ### Install
 
 ##### NPM
@@ -104,6 +134,9 @@ const dexterConfig: DexterConfig = {
     shouldFallbackToApi: true,      // Only use when using Blockfrost or Kupo as data providers. On failure, fallback to the DEX API to grab necessary data
     shouldSubmitOrders: false,      // Allow Dexter to submit orders from swap requests. Useful during development
     metadataMsgBranding: 'Dexter',  // Prepend branding name in Tx message
+    enableSaturnClob: false,        // Enable Saturn CLOB REST adapter
+    enableSplashSdk: false,         // Register SplashSdk adapter (requires Splash SDK deps)
+    splashSdkNetwork: 'mainnet',    // 'mainnet' | 'staging' for Splash SDK integration
 };
 const requestConfig: RequestConfig = {
     timeout: 5000,  // How long outside network requests have to reply
@@ -285,6 +318,12 @@ Environment variables:
 - Pool-specific depth: an asset may have bids/asks overall but your chosen pool could be empty at build time. Use `quoteByAsset` (auto-routes to a spendable pool).  
 - Small sizes: very small ADA spends (e.g., 0.5) can fail due to min-output/fee constraints—try ≥1–2 ADA.
 - Units: always send display units (ADA or token). Do not pre-scale to on-chain units.
+
+- **Splash SDK Adapter (`SplashSdk`)**
+  - Set `enableSplashSdk: true` and (optionally) `splashSdkNetwork: 'mainnet' | 'staging'` in your `DexterConfig` to register the new adapter alongside the legacy on-chain builder.
+  - Pools discovered through `SplashSdk` expose `pool.dex === 'SplashSdk'`. Route swap requests to that identifier to build orders via `@splashprotocol/sdk`.
+  - The adapter consumes `@splashprotocol/sdk`, `@splashprotocol/core`, `@splashprotocol/api`, and `@splashprotocol/cml-builder`. Ensure these packages are installed (they are bundled with this repo).
+  - Existing `Splash` pools remain available; opt-in per pool if you need to migrate gradually.
 
 ### Dexter API
 All providers outlined below are modular, so you can extend the 'base' of the specific provider you want to supply, and provide it

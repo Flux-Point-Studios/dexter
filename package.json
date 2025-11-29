@@ -44,6 +44,11 @@
     "smoke": "bun run smoke:dex && bun run smoke:integration"
   },
   "dependencies": {
+    "@lucid-evolution/lucid": "^0.4.29",
+    "@splashprotocol/api": "2.0.0-beta.59",
+    "@splashprotocol/cml-builder": "2.0.0-beta.133",
+    "@splashprotocol/core": "2.0.0-beta.19",
+    "@splashprotocol/sdk": "2.0.0-beta.132",
     "@types/blake2b": "^2.1.3",
     "@types/crypto-js": "^4.2.2",
     "axios": "^1.12.2",
@@ -53,8 +58,7 @@
     "crypto-js": "^4.2.0",
     "int64-buffer": "^1.1.0",
     "js-encoding-utils": "^0.7.3",
-    "lodash": "^4.17.21",
-    "@lucid-evolution/lucid": "^0.4.29"
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.20",

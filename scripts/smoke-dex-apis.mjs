@@ -37,8 +37,9 @@ const DEX_CONFIGS = {
     identifier: Minswap.identifier,
     name: 'Minswap',
     testAsset: 'lovelace', // ADA pools
-    expectPools: false, // API schema changed - needs adapter update
-    knownIssue: 'GraphQL schema changed (now uses input object)',
+    expectPools: false, // Bulk query doesn't return reserves, use pair query
+    requiresPair: true,
+    knownIssue: 'Bulk query limited - use pair query for full data',
   },
   sundaeswapV1: {
     identifier: SundaeSwapV1.identifier,
@@ -64,8 +65,7 @@ const DEX_CONFIGS = {
     identifier: WingRiders.identifier,
     name: 'WingRiders',
     testAsset: 'lovelace',
-    expectPools: false, // API schema changed - needs adapter update
-    knownIssue: 'GraphQL schema changed (now uses inline fragments)',
+    expectPools: true, // Now works with inline fragments query
   },
   wingridersV2: {
     identifier: WingRidersV2.identifier,

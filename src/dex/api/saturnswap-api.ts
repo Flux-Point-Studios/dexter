@@ -182,19 +182,35 @@ export class SaturnSwapApi extends BaseApi {
     }
 
     // ===== Dexter compatibility: fabricate a minimal pool from orderbook =====
+    /**
+     * Fetch liquidity pools for a given token pair.
+     * 
+     * If both assets are provided, fetches the specific pair.
+     * If only assetA is provided, defaults assetB to ADA (lovelace).
+     * If neither is provided, returns all available AMM pools.
+     * 
+     * @param assetA - First token (optional)
+     * @param assetB - Second token (optional, defaults to ADA if assetA provided)
+     */
     async liquidityPools(assetA?: Token, assetB?: Token): Promise<LiquidityPool[]> {
-        if (!assetA || !assetB) return [];
+        // If no assets provided, fetch all AMM pools
+        if (!assetA) {
+            return this.getAllAmmPools();
+        }
+
+        // Default second asset to ADA if not provided
+        const tokenB = assetB ?? 'lovelace';
 
         try {
-            const ob = await this.orderbook(assetA, assetB);
+            const ob = await this.orderbook(assetA, tokenB);
 
             const reserveA = this.approximateReserveFor(assetA, ob.asks, ob.bids);
-            const reserveB = this.approximateReserveFor(assetB, ob.asks, ob.bids);
+            const reserveB = this.approximateReserveFor(tokenB, ob.asks, ob.bids);
 
             const pool = new LiquidityPool(
                 SaturnSwap.identifier,
                 assetA,
-                assetB,
+                tokenB,
                 reserveA,
                 reserveB,
                 this.dex.poolAddress,
@@ -203,7 +219,7 @@ export class SaturnSwapApi extends BaseApi {
             );
 
             pool.poolFeePercent = 0.3;
-            pool.identifier = `${this.dex.orderAddress}:${this.assetKey(assetA)}-${this.assetKey(assetB)}`;
+            pool.identifier = `${this.dex.orderAddress}:${this.assetKey(assetA)}-${this.assetKey(tokenB)}`;
             pool.extra = { orderbook: { asks: ob.asks ?? [], bids: ob.bids ?? [] } };
 
             return [pool];
@@ -213,6 +229,87 @@ export class SaturnSwapApi extends BaseApi {
             });
             return [];
         }
+    }
+
+    /**
+     * Fetch all available AMM pools from SaturnSwap.
+     * This uses the /v1/aggregator/pools endpoint.
+     */
+    private async getAllAmmPools(): Promise<LiquidityPool[]> {
+        try {
+            const pools = await this.getAmmPools();
+            
+            if (!pools.length) {
+                logger.debug('[SaturnSwapApi] No AMM pools available');
+                return [];
+            }
+
+            return pools
+                .map((p: AmmPoolDTO) => {
+                    try {
+                        return this.poolFromDTO(p);
+                    } catch (mapErr: any) {
+                        logger.warn('[SaturnSwapApi] Failed to map pool DTO', {
+                            error: mapErr?.message || String(mapErr),
+                            poolId: p.poolId ?? p.id,
+                        });
+                        return undefined;
+                    }
+                })
+                .filter((p: LiquidityPool | undefined): p is LiquidityPool => p !== undefined);
+        } catch (e: any) {
+            logger.error('[SaturnSwapApi] getAllAmmPools failed', {
+                error: e?.message || String(e),
+            });
+            return [];
+        }
+    }
+
+    /**
+     * Convert an AmmPoolDTO to a LiquidityPool object.
+     */
+    private poolFromDTO(p: AmmPoolDTO): LiquidityPool | undefined {
+        const unitA = typeof p.assetA === 'string' ? p.assetA : p.assetA?.unit;
+        const unitB = typeof p.assetB === 'string' ? p.assetB : p.assetB?.unit;
+        
+        if (!unitA || !unitB) {
+            return undefined;
+        }
+
+        const tokenA = this.unitToToken(unitA);
+        const tokenB = this.unitToToken(unitB);
+        const reserveA = BigInt(p.reserveA ?? 0);
+        const reserveB = BigInt(p.reserveB ?? 0);
+
+        const pool = new LiquidityPool(
+            SaturnSwap.identifier,
+            tokenA,
+            tokenB,
+            reserveA,
+            reserveB,
+            this.dex.poolAddress,
+            this.dex.orderAddress,
+            this.dex.orderAddress,
+        );
+
+        pool.poolFeePercent = p.feePercent ?? 0.3;
+        pool.identifier = p.poolId ?? p.id;
+        pool.extra = {
+            updatedAt: p.updatedAt,
+            source: 'amm',
+        };
+
+        return pool;
+    }
+
+    /**
+     * Convert a unit string (e.g., "policyId.assetName" or "lovelace") to a Token.
+     */
+    private unitToToken(unit: string): Token {
+        if (!unit || unit === 'lovelace') return 'lovelace';
+        const parts = unit.split('.');
+        if (parts.length < 2) return 'lovelace';
+        return new Asset(parts[0], parts[1]);
     }
 
     // ===== Internals =====
